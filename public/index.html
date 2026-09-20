@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rail Board — Live Status, PNR &amp; Train Info</title>
+<style>
+  :root{
+    --board-black:#12181c;
+    --board-black-2:#1a2228;
+    --led-amber:#ffb93d;
+    --led-amber-dim:#8a6321;
+    --signal-red:#e4483d;
+    --signal-green:#3fa34d;
+    --paper:#f6f3ec;
+    --paper-2:#eee8da;
+    --ink:#1b2430;
+    --ink-soft:#5b6472;
+    --rule:#d9d2bf;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'IBM Plex Sans',-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+    line-height:1.4;
+  }
+  @media (prefers-reduced-motion: reduce){
+    *{animation-duration:.001ms !important; transition-duration:.001ms !important;}
+  }
+
+  /* ---------- Hero / Split-flap board ---------- */
+  .board{
+    background:
+      radial-gradient(1200px 400px at 50% -100px, #223038 0%, var(--board-black) 60%);
+    color:var(--led-amber);
+    padding:56px 20px 40px;
+    border-bottom:6px solid var(--board-black-2);
+  }
+  .board-inner{max-width:960px;margin:0 auto;}
+  .board-row{
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:center;
+    gap:6px;
+    margin-bottom:10px;
+  }
+  .flap{
+    font-family:'IBM Plex Mono',Consolas,monospace;
+    font-weight:700;
+    font-size:clamp(20px, 6vw, 40px);
+    background:linear-gradient(180deg,#232d33,#161d21);
+    color:var(--led-amber);
+    padding:6px 4px;
+    min-width:0.85em;
+    text-align:center;
+    border-radius:3px;
+    box-shadow:inset 0 -2px 0 rgba(0,0,0,.5), inset 0 2px 0 rgba(255,255,255,.03);
+    text-shadow:0 0 8px rgba(255,185,61,.55);
+    opacity:0;
+    animation:flapIn .5s ease forwards;
+  }
+  .flap.space{background:transparent;box-shadow:none;text-shadow:none;}
+  @keyframes flapIn{
+    0%{opacity:0; transform:rotateX(90deg); }
+    60%{opacity:1;}
+    100%{opacity:1; transform:rotateX(0deg);}
+  }
+  .board-sub{
+    text-align:center;
+    color:#9fb0b8;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:13px;
+    letter-spacing:.04em;
+    margin-top:18px;
+  }
+  .board-sub .clock{color:var(--led-amber);}
+  .board-sub .dot{color:var(--signal-green); margin:0 6px;}
+
+  .field select{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:15px;
+    padding:10px 11px;
+    border:1px solid var(--rule);
+    background:var(--paper);
+    color:var(--ink);
+  }
+  .field select:focus{outline:2px solid var(--signal-green); outline-offset:1px;}
+
+  /* ---------- Nav groups ---------- */
+  .nav-groups{max-width:960px; margin:-26px auto 0; padding:0 20px; position:relative; z-index:2;}
+  .nav-group{margin-bottom:10px;}
+  .nav-group-label{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10.5px;
+    letter-spacing:.08em;
+    color:#8a97a3;
+    background:var(--board-black);
+    display:inline-block;
+    padding:2px 8px;
+    margin-bottom:6px;
+  }
+  .nav-group-row{display:flex; gap:10px; flex-wrap:wrap;}
+
+  /* helper text under a field, and inline sub-action link */
+  .subaction{
+    background:none;
+    border:none;
+    padding:0;
+    margin-top:12px;
+    color:var(--ink-soft);
+    font-size:13px;
+    text-decoration:underline;
+    cursor:pointer;
+    font-family:'IBM Plex Sans',sans-serif;
+  }
+  .subaction:hover{color:var(--ink);}
+  .prob-bar{
+    height:22px;
+    background:var(--paper-2);
+    border:1px solid var(--rule);
+    margin-top:10px;
+    position:relative;
+  }
+  .prob-bar-fill{
+    height:100%;
+    background:var(--signal-green);
+  }
+  .prob-bar-label{
+    position:absolute; inset:0;
+    display:flex; align-items:center; justify-content:center;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    font-weight:700;
+    color:var(--ink);
+  }
+  .platform-btn{
+    flex:1 1 200px;
+    background:var(--paper);
+    border:1px solid var(--rule);
+    border-top:4px solid var(--ink-soft);
+    padding:14px 16px;
+    font-family:'IBM Plex Sans',sans-serif;
+    font-size:14.5px;
+    font-weight:600;
+    color:var(--ink-soft);
+    cursor:pointer;
+    text-align:left;
+    transition:border-color .15s ease, color .15s ease, transform .1s ease;
+  }
+  .platform-btn small{display:block; font-weight:400; color:var(--ink-soft); font-size:11.5px; margin-top:3px;}
+  .platform-btn.active{
+    border-top-color:var(--signal-red);
+    color:var(--ink);
+    background:#fff;
+  }
+  .platform-btn:hover{transform:translateY(-1px);}
+
+  /* ---------- Content area ---------- */
+  main{max-width:960px; margin:0 auto; padding:28px 20px 80px;}
+  .panel{display:none;}
+  .panel.active{display:block; animation:riseIn .35s ease;}
+  @keyframes riseIn{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  .ticket{
+    background:#fff;
+    border:1px solid var(--rule);
+    padding:22px;
+    position:relative;
+  }
+  .ticket::before{
+    content:"";
+    position:absolute; left:0; right:0; top:0; height:3px;
+    background:repeating-linear-gradient(90deg, var(--ink-soft) 0 10px, transparent 10px 18px);
+    opacity:.35;
+  }
+  h2.panel-title{
+    margin:0 0 4px;
+    font-size:20px;
+    font-weight:700;
+  }
+  p.panel-desc{margin:0 0 20px; color:var(--ink-soft); font-size:14px;}
+
+  .field-row{display:flex; gap:12px; flex-wrap:wrap; margin-bottom:14px;}
+  .field{flex:1 1 180px; display:flex; flex-direction:column; gap:6px;}
+  .field label{font-size:12.5px; font-weight:600; color:var(--ink-soft);}
+  .field input{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:15px;
+    padding:10px 11px;
+    border:1px solid var(--rule);
+    background:var(--paper);
+    color:var(--ink);
+  }
+  .field input:focus{outline:2px solid var(--signal-green); outline-offset:1px;}
+
+  .go-btn{
+    background:var(--board-black);
+    color:var(--led-amber);
+    border:none;
+    font-family:'IBM Plex Mono',monospace;
+    font-weight:700;
+    letter-spacing:.03em;
+    padding:11px 22px;
+    cursor:pointer;
+    font-size:14px;
+  }
+  .go-btn:hover{background:var(--board-black-2);}
+  .go-btn:disabled{opacity:.5; cursor:default;}
+
+  .status-line{margin-top:16px; font-size:13.5px; color:var(--ink-soft); min-height:18px;}
+  .status-line.err{color:var(--signal-red); font-weight:600;}
+
+  /* result board rows */
+  .result-board{margin-top:18px; border:1px solid var(--rule);}
+  .rb-row{
+    display:grid;
+    grid-template-columns:1fr auto;
+    gap:10px;
+    padding:10px 14px;
+    border-bottom:1px solid var(--rule);
+    font-family:'IBM Plex Mono',monospace;
+    font-size:13.5px;
+  }
+  .rb-row:last-child{border-bottom:none;}
+  .rb-row .lbl{color:var(--ink-soft); font-family:'IBM Plex Sans',sans-serif; font-size:12px; display:block; margin-bottom:2px;}
+  .tag{
+    display:inline-block;
+    padding:2px 8px;
+    font-size:11.5px;
+    font-weight:700;
+    border-radius:2px;
+  }
+  .tag.green{background:rgba(63,163,77,.12); color:var(--signal-green);}
+  .tag.red{background:rgba(228,72,61,.12); color:var(--signal-red);}
+  .tag.amber{background:rgba(255,185,61,.18); color:#8a6321;}
+
+  pre.raw{
+    background:var(--board-black);
+    color:#9fdca0;
+    padding:14px;
+    font-size:12px;
+    overflow:auto;
+    max-height:340px;
+    margin-top:14px;
+    font-family:'IBM Plex Mono',monospace;
+  }
+
+  /* ---------- Settings ---------- */
+  details.settings{margin-top:24px; border:1px dashed var(--rule); padding:14px 16px;}
+  details.settings summary{cursor:pointer; font-weight:600; font-size:13.5px; color:var(--ink-soft);}
+  .settings-grid{display:flex; gap:12px; flex-wrap:wrap; margin-top:14px;}
+  .note{
+    background:var(--paper-2);
+    border-left:3px solid var(--signal-amber, var(--led-amber));
+    padding:10px 14px;
+    font-size:12.5px;
+    color:var(--ink-soft);
+    margin-top:14px;
+  }
+
+  footer{
+    text-align:center;
+    color:var(--ink-soft);
+    font-size:12px;
+    padding:20px;
+  }
+</style>
+</head>
+<body>
+
+<div class="board">
+  <div class="board-inner">
+    <div class="board-row" id="titleFlap"></div>
+    <div class="board-row" id="subFlap"></div>
+    <div class="board-sub">
+      <span class="clock" id="clock">--:--:--</span>
+      <span class="dot">●</span>
+      <span id="dateLine"></span>
+    </div>
+  </div>
+</div>
+
+<div class="nav-groups">
+  <div class="nav-group">
+    <span class="nav-group-label">TRAINS</span>
+    <div class="nav-group-row">
+      <button class="platform-btn active" data-panel="live">Live Status<small>Where is my train, right now</small></button>
+      <button class="platform-btn" data-panel="train">Train Info<small>Route, stops &amp; schedule</small></button>
+      <button class="platform-btn" data-panel="between">Between Stations<small>Find a connection</small></button>
+      <button class="platform-btn" data-panel="seats">Seat Availability<small>14-day forecast by class</small></button>
+      <button class="platform-btn" data-panel="fare">Fare Calculator<small>Itemized ticket price</small></button>
+    </div>
+  </div>
+  <div class="nav-group">
+    <span class="nav-group-label">PNR</span>
+    <div class="nav-group-row">
+      <button class="platform-btn" data-panel="pnr">PNR Status<small>Booking &amp; seat confirmation</small></button>
+    </div>
+  </div>
+  <div class="nav-group">
+    <span class="nav-group-label">STATIONS &amp; LOOKUP</span>
+    <div class="nav-group-row">
+      <button class="platform-btn" data-panel="board">Station Board<small>Live arrivals &amp; departures</small></button>
+      <button class="platform-btn" data-panel="search">Quick Search<small>Find a station or train code</small></button>
+    </div>
+  </div>
+</div>
+
+<main>
+
+  <!-- LIVE STATUS -->
+  <section class="panel active" id="panel-live">
+    <div class="ticket">
+      <h2 class="panel-title">Live train status</h2>
+      <p class="panel-desc">Enter a train number to see its current running position and delay.</p>
+      <div class="field-row">
+        <div class="field">
+          <label for="live-no">Train number</label>
+          <input id="live-no" placeholder="e.g. 12951" inputmode="numeric" maxlength="5">
+        </div>
+        <div class="field">
+          <label for="live-date">Journey date</label>
+          <input id="live-date" type="date">
+        </div>
+      </div>
+      <button class="go-btn" data-action="live">Check status</button>
+      <div class="status-line" id="live-status"></div>
+      <div id="live-result"></div>
+    </div>
+  </section>
+
+  <!-- PNR -->
+  <section class="panel" id="panel-pnr">
+    <div class="ticket">
+      <h2 class="panel-title">PNR status</h2>
+      <p class="panel-desc">Enter your 10-digit PNR to check booking and seat confirmation.</p>
+      <div class="field-row">
+        <div class="field">
+          <label for="pnr-no">PNR number</label>
+          <input id="pnr-no" placeholder="10-digit PNR" inputmode="numeric" maxlength="10">
+        </div>
+      </div>
+      <button class="go-btn" data-action="pnr">Check PNR</button>
+      <div class="status-line" id="pnr-status"></div>
+      <div id="pnr-result"></div>
+      <button class="subaction" data-action="predict">Also check confirmation chances →</button>
+      <div class="status-line" id="predict-status"></div>
+      <div id="predict-result"></div>
+    </div>
+  </section>
+
+  <!-- TRAIN INFO -->
+  <section class="panel" id="panel-train">
+    <div class="ticket">
+      <h2 class="panel-title">Train info &amp; route</h2>
+      <p class="panel-desc">Look up a train's name, route and stoppages by number.</p>
+      <div class="field-row">
+        <div class="field">
+          <label for="train-no">Train number</label>
+          <input id="train-no" placeholder="e.g. 12301" inputmode="numeric" maxlength="5">
+        </div>
+      </div>
+      <button class="go-btn" data-action="train">Get details</button>
+      <div class="status-line" id="train-status"></div>
+      <div id="train-result"></div>
+    </div>
+  </section>
+
+  <!-- BETWEEN STATIONS -->
+  <section class="panel" id="panel-between">
+    <div class="ticket">
+      <h2 class="panel-title">Trains between stations</h2>
+      <p class="panel-desc">Enter station codes to see trains running between them.</p>
+      <div class="field-row">
+        <div class="field">
+          <label for="from-code">From (station code)</label>
+          <input id="from-code" placeholder="e.g. NDLS" maxlength="8" style="text-transform:uppercase;">
+        </div>
+        <div class="field">
+          <label for="to-code">To (station code)</label>
+          <input id="to-code" placeholder="e.g. BCT" maxlength="8" style="text-transform:uppercase;">
+        </div>
+      </div>
+      <button class="go-btn" data-action="between">Find trains</button>
+      <div class="status-line" id="between-status"></div>
+      <div id="between-result"></div>
+    </div>
+  </section>
+
+  <!-- SEAT AVAILABILITY -->
+  <section class="panel" id="panel-seats">
+    <div class="ticket">
+      <h2 class="panel-title">Seat availability</h2>
+      <p class="panel-desc">14-day IRCTC availability forecast for a train, class and quota.</p>
+      <div class="field-row">
+        <div class="field">
+          <label for="seats-no">Train number</label>
+          <input id="seats-no" placeholder="e.g. 12952" inputmode="numeric" maxlength="5">
+        </div>
+        <div class="field">
+          <label for="seats-date">Journey date</label>
+          <input id="seats-date" type="date">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="seats-from">From (station code)</label>
+          <input id="seats-from" placeholder="e.g. NDLS" maxlength="8" style="text-transform:uppercase;">
+        </div>
+        <div class="field">
+          <label for="seats-to">To (station code)</label>
+          <input id="seats-to" placeholder="e.g. MMCT" maxlength="8" style="text-transform:uppercase;">
+        </div>
+        <div class="field">
+          <label for="seats-class">Class</label>
+          <select id="seats-class">
+            <option value="SL">Sleeper (SL)</option>
+            <option value="3A" selected>AC 3-Tier (3A)</option>
+            <option value="2A">AC 2-Tier (2A)</option>
+            <option value="1A">AC First Class (1A)</option>
+            <option value="3E">AC 3-Economy (3E)</option>
+            <option value="CC">Chair Car (CC)</option>
+            <option value="2S">Second Sitting (2S)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="seats-quota">Quota</label>
+          <select id="seats-quota">
+            <option value="GN" selected>General (GN)</option>
+            <option value="TQ">Tatkal (TQ)</option>
+            <option value="PT">Premium Tatkal (PT)</option>
+            <option value="LD">Ladies (LD)</option>
+            <option value="SS">Senior Citizen (SS)</option>
+          </select>
+        </div>
+      </div>
+      <button class="go-btn" data-action="seats">Check availability</button>
+      <div class="status-line" id="seats-status"></div>
+      <div id="seats-result"></div>
+    </div>
+  </section>
+
+  <!-- FARE CALCULATOR -->
+  <section class="panel" id="panel-fare">
+    <div class="ticket">
+      <h2 class="panel-title">Fare calculator</h2>
+      <p class="panel-desc">Itemized ticket price — base fare, surcharges, GST and catering.</p>
+      <div class="field-row">
+        <div class="field">
+          <label for="fare-no">Train number</label>
+          <input id="fare-no" placeholder="e.g. 12952" inputmode="numeric" maxlength="5">
+        </div>
+        <div class="field">
+          <label for="fare-date">Journey date</label>
+          <input id="fare-date" type="date">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="fare-from">From (station code)</label>
+          <input id="fare-from" placeholder="e.g. NDLS" maxlength="8" style="text-transform:uppercase;">
+        </div>
+        <div class="field">
+          <label for="fare-to">To (station code)</label>
+          <input id="fare-to" placeholder="e.g. MMCT" maxlength="8" style="text-transform:uppercase;">
+        </div>
+        <div class="field">
+          <label for="fare-class">Class</label>
+          <select id="fare-class">
+            <option value="SL">Sleeper (SL)</option>
+            <option value="3A" selected>AC 3-Tier (3A)</option>
+            <option value="2A">AC 2-Tier (2A)</option>
+            <option value="1A">AC First Class (1A)</option>
+            <option value="3E">AC 3-Economy (3E)</option>
+            <option value="CC">Chair Car (CC)</option>
+            <option value="2S">Second Sitting (2S)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="fare-quota">Quota</label>
+          <select id="fare-quota">
+            <option value="GN" selected>General (GN)</option>
+            <option value="TQ">Tatkal (TQ)</option>
+            <option value="PT">Premium Tatkal (PT)</option>
+            <option value="LD">Ladies (LD)</option>
+            <option value="SS">Senior Citizen (SS)</option>
+          </select>
+        </div>
+      </div>
+      <button class="go-btn" data-action="fare">Calculate fare</button>
+      <div class="status-line" id="fare-status"></div>
+      <div id="fare-result"></div>
+    </div>
+  </section>
+
+  <!-- STATION LIVE BOARD -->
+  <section class="panel" id="panel-board">
+    <div class="ticket">
+      <h2 class="panel-title">Station live board</h2>
+      <p class="panel-desc">Arrivals and departures at a station, right now.</p>
+      <div class="field-row">
+        <div class="field">
+          <label for="board-code">Station code</label>
+          <input id="board-code" placeholder="e.g. NDLS" maxlength="8" style="text-transform:uppercase;">
+        </div>
+        <div class="field">
+          <label for="board-hours">Look ahead</label>
+          <select id="board-hours">
+            <option value="2">2 hours</option>
+            <option value="4" selected>4 hours</option>
+            <option value="6">6 hours</option>
+            <option value="8">8 hours</option>
+          </select>
+        </div>
+      </div>
+      <button class="go-btn" data-action="board">Show board</button>
+      <div class="status-line" id="board-status"></div>
+      <div id="board-result"></div>
+    </div>
+  </section>
+
+  <!-- QUICK SEARCH -->
+  <section class="panel" id="panel-search">
+    <div class="ticket">
+      <h2 class="panel-title">Quick search</h2>
+      <p class="panel-desc">Find a station code by city/name, or a train number by name.</p>
+      <div class="field-row">
+        <div class="field" style="flex:2 1 240px;">
+          <label for="search-q">Search</label>
+          <input id="search-q" placeholder="e.g. Delhi, or Shatabdi, or 12951">
+        </div>
+        <div class="field">
+          <label for="search-type">Looking for</label>
+          <select id="search-type">
+            <option value="stations">Stations</option>
+            <option value="trains">Trains</option>
+          </select>
+        </div>
+      </div>
+      <button class="go-btn" data-action="search">Search</button>
+      <div class="status-line" id="search-status"></div>
+      <div id="search-result"></div>
+    </div>
+  </section>
+
+  <details class="settings" open>
+    <summary>API connection settings</summary>
+    <div class="settings-grid">
+      <div class="field">
+        <label for="cfg-base">Base URL</label>
+        <input id="cfg-base" value="http://localhost:8787/api/v1">
+      </div>
+      <div class="field">
+        <label for="cfg-key">API key (only used if calling RailRadar directly)</label>
+        <input id="cfg-key" value="">
+      </div>
+    </div>
+    <div class="note">
+      <b>"Failed to fetch" fix:</b> RailRadar's API doesn't send the browser CORS headers needed for a page to call
+      it directly, so a pure frontend can't reach <code>api.railradar.in</code> on its own. This site now points at
+      a tiny local proxy instead — download <code>proxy.js</code> (shared alongside this file), run
+      <code>node proxy.js</code> in a terminal, and leave Base URL as-is. The proxy holds your API key server-side
+      and forwards requests, so the key field above can stay blank. If you'd rather call RailRadar directly (e.g.
+      once you confirm with their support that CORS is enabled for your plan), set Base URL back to
+      <code>https://api.railradar.in/v1</code> and put your key in the field above.
+    </div>
+  </details>
+
+</main>
+
+<footer>Built as a static frontend — no backend, no data stored anywhere.</footer>
+
+<script>
+  // ---------- Split-flap title ----------
+  function renderFlaps(container, text){
+    container.innerHTML = '';
+    [...text].forEach((ch, i) => {
+      const span = document.createElement('span');
+      span.className = 'flap' + (ch === ' ' ? ' space' : '');
+      span.textContent = ch === ' ' ? '' : ch;
+      span.style.animationDelay = (i * 35) + 'ms';
+      container.appendChild(span);
+    });
+  }
+  renderFlaps(document.getElementById('titleFlap'), 'RAIL BOARD');
+  renderFlaps(document.getElementById('subFlap'), 'STATUS · PNR · SEATS · FARE');
+
+  function tickClock(){
+    const now = new Date();
+    document.getElementById('clock').textContent = now.toLocaleTimeString('en-IN', { hour12:false });
+    document.getElementById('dateLine').textContent = now.toLocaleDateString('en-IN', { weekday:'short', day:'2-digit', month:'short', year:'numeric' });
+  }
+  tickClock();
+  setInterval(tickClock, 1000);
+
+  // default journey date = today
+  document.getElementById('live-date').value = new Date().toISOString().slice(0,10);
+  document.getElementById('seats-date').value = new Date().toISOString().slice(0,10);
+  document.getElementById('fare-date').value = new Date().toISOString().slice(0,10);
+
+  // ---------- Tab switching ----------
+  document.querySelectorAll('.platform-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.platform-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('panel-' + btn.dataset.panel).classList.add('active');
+    });
+  });
+
+  // ---------- API layer ----------
+  // Matches RailRadar's published reference docs (railradar.in/docs) as of this build.
+  const ENDPOINTS = {
+    live:    (no, date) => `/trains/${no}/live` + (date ? `?date=${date}` : ''),
+    pnr:     (pnr)       => `/pnr/${pnr}`,
+    predict: (pnr)       => `/pnr/${pnr}/prediction`,
+    train:   (no)         => `/trains/${no}?haltsOnly=true`,
+    between: (from, to, date) => `/trains/between/${from}/${to}` + (date ? `?date=${date}` : ''),
+    seats:   (no, params) => `/trains/${no}/seats?` + new URLSearchParams(params).toString(),
+    fare:    (no, params) => `/trains/${no}/fare?` + new URLSearchParams(params).toString(),
+    board:   (code, params) => `/stations/${code}/live?` + new URLSearchParams(params).toString(),
+    search:  (kind, q) => `/lookup/search/${kind}?q=${encodeURIComponent(q)}&limit=20`,
+  };
+
+  function cfg(){
+    return {
+      base: document.getElementById('cfg-base').value.trim().replace(/\/+$/,''),
+      key: document.getElementById('cfg-key').value.trim(),
+    };
+  }
+
+  async function callApi(path){
+    const { base, key } = cfg();
+    const headers = { 'Accept':'application/json' };
+    if(key){ headers['Authorization'] = 'Bearer ' + key; }
+    const res = await fetch(base + path, { headers });
+    let body;
+    const text = await res.text();
+    try { body = JSON.parse(text); } catch(e){ body = text; }
+    if(!res.ok || body?.success === false){
+      const msg = body?.error?.message || `Request failed (HTTP ${res.status})`;
+      const err = new Error(msg);
+      err.body = body;
+      throw err;
+    }
+    return body;
+  }
+
+  function setStatus(id, msg, isErr){
+    const el = document.getElementById(id);
+    el.textContent = msg;
+    el.className = 'status-line' + (isErr ? ' err' : '');
+  }
+
+  function rawBlock(data){
+    const pre = document.createElement('pre');
+    pre.className = 'raw';
+    pre.textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+    return pre;
+  }
+
+  function row(label, value, tagClass){
+    const div = document.createElement('div');
+    div.className = 'rb-row';
+    const l = document.createElement('div');
+    l.innerHTML = `<span class="lbl">${label}</span>${value ?? '—'}`;
+    const r = document.createElement('div');
+    if(tagClass){ r.innerHTML = `<span class="tag ${tagClass}">${tagClass.toUpperCase()}</span>`; }
+    div.appendChild(l); div.appendChild(r);
+    return div;
+  }
+
+  function pick(obj, keys){
+    for(const k of keys){
+      if(obj && obj[k] !== undefined && obj[k] !== null) return obj[k];
+    }
+    return undefined;
+  }
+
+  async function handleLive(){
+    const no = document.getElementById('live-no').value.trim();
+    const date = document.getElementById('live-date').value;
+    const resultEl = document.getElementById('live-result');
+    resultEl.innerHTML = '';
+    if(!no){ setStatus('live-status', 'Enter a train number.', true); return; }
+    setStatus('live-status', 'Checking live position…');
+    try{
+      const data = await callApi(ENDPOINTS.live(no, date));
+      const d = data.data || {};
+      setStatus('live-status', 'Live data received.');
+      const board = document.createElement('div');
+      board.className = 'result-board';
+      board.appendChild(row('Train', [d.trainNumber, d.trainName].filter(Boolean).join(' · ')));
+      board.appendChild(row('Status', d.status));
+      const delayVal = d.delayMinutes;
+      board.appendChild(row('Delay', delayVal !== undefined ? `${delayVal} min` : '—', delayVal > 0 ? 'red' : 'green'));
+      const cur = d.currentLocation || {};
+      board.appendChild(row('Current location', [cur.stationCode, cur.status].filter(Boolean).join(' · ')));
+      const next = d.nextHalt || {};
+      board.appendChild(row('Next halt', [next.stationCode, next.stationName].filter(Boolean).join(' — ')));
+      board.appendChild(row('Last updated', d.lastUpdatedAt));
+      resultEl.appendChild(board);
+      resultEl.appendChild(rawBlock(data));
+    }catch(e){
+      setStatus('live-status', e.message + ' — see raw response below.', true);
+      if(e.body) resultEl.appendChild(rawBlock(e.body));
+    }
+  }
+
+  async function handlePnr(){
+    const pnr = document.getElementById('pnr-no').value.trim();
+    const resultEl = document.getElementById('pnr-result');
+    resultEl.innerHTML = '';
+    if(!/^\d{10}$/.test(pnr)){ setStatus('pnr-status', 'Enter a valid 10-digit PNR.', true); return; }
+    setStatus('pnr-status', 'Checking PNR…');
+    try{
+      const data = await callApi(ENDPOINTS.pnr(pnr));
+      const d = data.data || {};
+      const train = d.train || {};
+      const journey = d.journey || {};
+      const charting = d.charting || {};
+      setStatus('pnr-status', 'PNR data received.');
+      const board = document.createElement('div');
+      board.className = 'result-board';
+      board.appendChild(row('Train', [train.number, train.name].filter(Boolean).join(' · ')));
+      board.appendChild(row('From → To', [train.source?.name, train.destination?.name].filter(Boolean).join(' → ')));
+      board.appendChild(row('Class / Quota', [journey.class, journey.quota].filter(Boolean).join(' / ')));
+      board.appendChild(row('Date of journey', journey.date));
+      board.appendChild(row('Chart status', charting.status));
+      resultEl.appendChild(board);
+      if(Array.isArray(d.passengers)){
+        const pboard = document.createElement('div');
+        pboard.className = 'result-board';
+        d.passengers.forEach((p) => {
+          pboard.appendChild(row(
+            `Passenger ${p.passengerNumber ?? ''}`,
+            [p.bookingStatus, '→', p.currentStatus, p.coach ? `(${p.coach}${p.berthNumber ? '/'+p.berthNumber : ''})` : ''].filter(Boolean).join(' '),
+            p.isConfirmed ? 'green' : (p.isWaitlisted ? 'amber' : undefined)
+          ));
+        });
+        resultEl.appendChild(pboard);
+      }
+      resultEl.appendChild(rawBlock(data));
+    }catch(e){
+      setStatus('pnr-status', e.message + ' — see raw response below.', true);
+      if(e.body) resultEl.appendChild(rawBlock(e.body));
+    }
+  }
+
+  async function handleTrain(){
+    const no = document.getElementById('train-no').value.trim();
+    const resultEl = document.getElementById('train-result');
+    resultEl.innerHTML = '';
+    if(!no){ setStatus('train-status', 'Enter a train number.', true); return; }
+    setStatus('train-status', 'Fetching train details…');
+    try{
+      const data = await callApi(ENDPOINTS.train(no));
+      const d = data.data || {};
+      const train = d.train || {};
+      setStatus('train-status', 'Train data received.');
+      const board = document.createElement('div');
+      board.className = 'result-board';
+      board.appendChild(row('Name', [train.number, train.name].filter(Boolean).join(' · ')));
+      board.appendChild(row('From → To', [train.source?.name, train.destination?.name].filter(Boolean).join(' → ')));
+      board.appendChild(row('Type / Category', [train.type, train.category].filter(Boolean).join(' / ')));
+      board.appendChild(row('Runs on', Array.isArray(train.runDays) ? train.runDays.join(', ') : undefined));
+      board.appendChild(row('Distance / Duration', [train.distance ? train.distance+' km' : null, train.duration ? Math.round(train.duration/60)+'h '+(train.duration%60)+'m' : null].filter(Boolean).join(' · ')));
+      resultEl.appendChild(board);
+      if(Array.isArray(d.route)){
+        const rboard = document.createElement('div');
+        rboard.className = 'result-board';
+        d.route.forEach(st => {
+          rboard.appendChild(row(st.station?.name || st.station?.code || 'Stop', [st.arrival, st.departure].filter(Boolean).join(' / ')));
+        });
+        resultEl.appendChild(rboard);
+      }
+      resultEl.appendChild(rawBlock(data));
+    }catch(e){
+      setStatus('train-status', e.message + ' — see raw response below.', true);
+      if(e.body) resultEl.appendChild(rawBlock(e.body));
+    }
+  }
+
+  async function handleBetween(){
+    const from = document.getElementById('from-code').value.trim().toUpperCase();
+    const to = document.getElementById('to-code').value.trim().toUpperCase();
+    const resultEl = document.getElementById('between-result');
+    resultEl.innerHTML = '';
+    if(!from || !to){ setStatus('between-status', 'Enter both station codes.', true); return; }
+    setStatus('between-status', 'Searching trains…');
+    try{
+      const data = await callApi(ENDPOINTS.between(from, to));
+      const d = data.data || {};
+      const list = d.trains || [];
+      setStatus('between-status', `${d.count ?? list.length} train(s) found.`);
+      const board = document.createElement('div');
+      board.className = 'result-board';
+      list.forEach(t => {
+        board.appendChild(row(
+          [t.train?.number, t.train?.name].filter(Boolean).join(' · '),
+          [t.from?.departure, t.to?.arrival].filter(Boolean).join(' → ')
+        ));
+      });
+      resultEl.appendChild(board);
+      resultEl.appendChild(rawBlock(data));
+    }catch(e){
+      setStatus('between-status', e.message + ' — see raw response below.', true);
+      if(e.body) resultEl.appendChild(rawBlock(e.body));
+    }
+  }
+
+  async function handlePredict(){
+    const pnr = document.getElementById('pnr-no').value.trim();
+    const resultEl = document.getElementById('predict-result');
+    resultEl.innerHTML = '';
+    if(!/^\d{10}$/.test(pnr)){ setStatus('predict-status', 'Enter a valid 10-digit PNR above first.', true); return; }
+    setStatus('predict-status', 'Calculating confirmation chances…');
+    try{
+      const data = await callApi(ENDPOINTS.predict(pnr));
+      const d = data.data || {};
+      setStatus('predict-status', d.header || 'Prediction received.');
+      const pct = Math.round((d.probability ?? 0) * 100);
+      const bar = document.createElement('div');
+      bar.className = 'prob-bar';
+      bar.innerHTML = `<div class="prob-bar-fill" style="width:${pct}%; background:${pct>=70?'var(--signal-green)':pct>=35?'var(--led-amber)':'var(--signal-red)'}"></div><div class="prob-bar-label">${pct}% confirmation probability</div>`;
+      resultEl.appendChild(bar);
+      resultEl.appendChild(rawBlock(data));
+    }catch(e){
+      setStatus('predict-status', e.message + ' — see raw response below.', true);
+      if(e.body) resultEl.appendChild(rawBlock(e.body));
+    }
+  }
+
+  function availabilityTag(status){
+    if(!status) return undefined;
+    const s = status.toUpperCase();
+    if(s.startsWith('AVAILABLE')) return 'green';
+    if(s.startsWith('RAC')) return 'amber';
+    return 'red'; // WL, GNWL, REGRET, NOT AVAILABLE, etc.
+  }
+
+  async function handleSeats(){
+    const no = document.getElementById('seats-no').value.trim();
+    const params = {
+      source: document.getElementById('seats-from').value.trim().toUpperCase(),
+      destination: document.getElementById('seats-to').value.trim().toUpperCase(),
+      journeyDate: document.getElementById('seats-date').value,
+      classCode: document.getElementById('seats-class').value,
+      quotaCode: document.getElementById('seats-quota').value,
+    };
+    const resultEl = document.getElementById('seats-result');
+    resultEl.innerHTML = '';
+    if(!no || !params.source || !params.destination || !params.journeyDate){
+      setStatus('seats-status', 'Fill in train number, from, to and date.', true); return;
+    }
+    setStatus('seats-status', 'Checking 14-day availability…');
+    try{
+      const data = await callApi(ENDPOINTS.seats(no, params));
+      const d = data.data || {};
+      setStatus('seats-status', `${d.trainName || no} · ${d.classCode}/${d.quotaCode}`);
+      const board = document.createElement('div');
+      board.className = 'result-board';
+      (d.avlDayList || []).forEach(day => {
+        board.appendChild(row(day.availablityDate, day.availablityStatus, availabilityTag(day.availablityStatus)));
+      });
+      resultEl.appendChild(board);
+      resultEl.appendChild(rawBlock(data));
+    }catch(e){
+      setStatus('seats-status', e.message + ' — see raw response below.', true);
+      if(e.body) resultEl.appendChild(rawBlock(e.body));
+    }
+  }
+
+  async function handleFare(){
+    const no = document.getElementById('fare-no').value.trim();
+    const params = {
+      source: document.getElementById('fare-from').value.trim().toUpperCase(),
+      destination: document.getElementById('fare-to').value.trim().toUpperCase(),
+      journeyDate: document.getElementById('fare-date').value,
+      classCode: document.getElementById('fare-class').value,
+      quotaCode: document.getElementById('fare-quota').value,
+    };
+    const resultEl = document.getElementById('fare-result');
+    resultEl.innerHTML = '';
+    if(!no || !params.source || !params.destination || !params.journeyDate){
+      setStatus('fare-status', 'Fill in train number, from, to and date.', true); return;
+    }
+    setStatus('fare-status', 'Calculating fare…');
+    try{
+      const data = await callApi(ENDPOINTS.fare(no, params));
+      const d = data.data || {};
+      const b = d.breakdown || {};
+      setStatus('fare-status', `${d.trainName || no} · ${d.classCode}/${d.quotaCode}`);
+      const board = document.createElement('div');
+      board.className = 'result-board';
+      board.appendChild(row('Base fare', b.baseFare));
+      board.appendChild(row('Reservation charge', b.reservationCharge));
+      board.appendChild(row('Superfast charge', b.superfastCharge));
+      board.appendChild(row('Tatkal fare', b.tatkalFare));
+      board.appendChild(row('GST', b.goodsServiceTax));
+      board.appendChild(row('Catering charge', b.cateringCharge));
+      board.appendChild(row('Dynamic fare', b.dynamicFare));
+      board.appendChild(row('Total fare', d.totalFare ? `₹${d.totalFare}` : undefined, 'green'));
+      resultEl.appendChild(board);
+      resultEl.appendChild(rawBlock(data));
+    }catch(e){
+      setStatus('fare-status', e.message + ' — see raw response below.', true);
+      if(e.body) resultEl.appendChild(rawBlock(e.body));
+    }
+  }
+
+  async function handleBoard(){
+    const code = document.getElementById('board-code').value.trim().toUpperCase();
+    const hours = document.getElementById('board-hours').value;
+    const resultEl = document.getElementById('board-result');
+    resultEl.innerHTML = '';
+    if(!code){ setStatus('board-status', 'Enter a station code.', true); return; }
+    setStatus('board-status', 'Loading live board…');
+    try{
+      const data = await callApi(ENDPOINTS.board(code, { hours }));
+      const d = data.data || {};
+      setStatus('board-status', `${d.station?.name || code} · window ${d.window?.from ?? ''}–${d.window?.to ?? ''}`);
+      const board = document.createElement('div');
+      board.className = 'result-board';
+      (d.trains || []).forEach(t => {
+        const live = t.live || {};
+        board.appendChild(row(
+          [t.train?.number, t.train?.name].filter(Boolean).join(' · '),
+          [t.stop?.departure || t.stop?.arrival, live.platform ? `PF ${live.platform}` : null, live.delayMinutes ? `+${live.delayMinutes}m` : null].filter(Boolean).join(' · '),
+          live.type === 'at-station' ? 'green' : (live.delayMinutes > 0 ? 'red' : undefined)
+        ));
+      });
+      resultEl.appendChild(board);
+      resultEl.appendChild(rawBlock(data));
+    }catch(e){
+      setStatus('board-status', e.message + ' — see raw response below.', true);
+      if(e.body) resultEl.appendChild(rawBlock(e.body));
+    }
+  }
+
+  async function handleSearch(){
+    const q = document.getElementById('search-q').value.trim();
+    const kind = document.getElementById('search-type').value;
+    const resultEl = document.getElementById('search-result');
+    resultEl.innerHTML = '';
+    if(!q){ setStatus('search-status', 'Type something to search for.', true); return; }
+    setStatus('search-status', 'Searching…');
+    try{
+      const data = await callApi(ENDPOINTS.search(kind, q));
+      const list = data.data || [];
+      setStatus('search-status', `${list.length} result(s).`);
+      const board = document.createElement('div');
+      board.className = 'result-board';
+      list.forEach(item => {
+        if(kind === 'stations'){
+          board.appendChild(row(`${item.code} — ${item.name}`, item.city));
+        } else {
+          board.appendChild(row(`${item.number} — ${item.name}`, [item.source, item.destination].filter(Boolean).join(' → ')));
+        }
+      });
+      resultEl.appendChild(board);
+      resultEl.appendChild(rawBlock(data));
+    }catch(e){
+      setStatus('search-status', e.message + ' — see raw response below.', true);
+      if(e.body) resultEl.appendChild(rawBlock(e.body));
+    }
+  }
+
+  document.querySelectorAll('[data-action]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      btn.disabled = true;
+      const map = { live:handleLive, pnr:handlePnr, predict:handlePredict, train:handleTrain, between:handleBetween, seats:handleSeats, fare:handleFare, board:handleBoard, search:handleSearch };
+      map[btn.dataset.action]().finally(() => { btn.disabled = false; });
+    });
+  });
+</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+</body>
+</html>
