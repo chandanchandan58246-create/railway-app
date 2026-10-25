@@ -266,6 +266,52 @@
     font-size:12px;
     padding:20px;
   }
+
+  /* ---------- Account and theme upgrade ---------- */
+  :root { color-scheme: light; }
+  body[data-theme="dark"] {
+    color-scheme: dark;
+    --paper:#0d1318; --paper-2:#151e25; --ink:#e8eef3; --ink-soft:#a7b4bf;
+    --rule:#34414b; --board-black:#080d11; --board-black-2:#111a20;
+  }
+  body[data-theme="dark"] .ticket, body[data-theme="dark"] .platform-btn.active {
+    background:#151e25; color:var(--ink); border-color:var(--rule);
+  }
+  body[data-theme="dark"] .field input, body[data-theme="dark"] .field select {
+    background:#0d1318; color:var(--ink); border-color:var(--rule);
+  }
+  body[data-theme="dark"] .prob-bar { background:#202b33; border-color:var(--rule); }
+  body[data-theme="dark"] .prob-bar-label { color:#f1f5f8; }
+  body[data-theme="dark"] .note { background:#18232b; color:var(--ink-soft); }
+  body[data-theme="dark"] .platform-btn { background:#111a20; border-color:var(--rule); color:var(--ink-soft); }
+  body[data-theme="dark"] .platform-btn.active { border-top-color:var(--signal-red); color:var(--ink); }
+  .account-toolbar { max-width:960px; margin:12px auto 34px; padding:0 20px; display:flex; justify-content:flex-end; align-items:center; gap:9px; position:relative; z-index:3; }
+  .account-btn { border:1px solid var(--rule); background:var(--paper); color:var(--ink); border-radius:999px; padding:9px 14px; font:600 13px 'IBM Plex Sans',sans-serif; cursor:pointer; }
+  .account-btn.primary { background:var(--board-black); color:var(--led-amber); border-color:var(--board-black); }
+  .account-btn:hover { transform:translateY(-1px); }
+  .account-pill { display:flex; align-items:center; gap:8px; }
+  .avatar { width:28px; height:28px; border-radius:50%; display:inline-grid; place-items:center; background:var(--led-amber); color:#111; font-weight:700; overflow:hidden; }
+  .avatar img { width:100%; height:100%; object-fit:cover; }
+  .auth-overlay { display:none; position:fixed; inset:0; z-index:1000; background:rgba(3,8,12,.72); backdrop-filter:blur(8px); padding:18px; align-items:center; justify-content:center; }
+  .auth-overlay.open { display:flex; }
+  .auth-card { width:min(100%,430px); max-height:90vh; overflow:auto; background:var(--paper); color:var(--ink); border:1px solid var(--rule); border-radius:18px; padding:24px; box-shadow:0 25px 90px rgba(0,0,0,.35); }
+  .auth-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:18px; }
+  .auth-head h2 { margin:0 0 5px; font-size:22px; }
+  .auth-head p { margin:0; color:var(--ink-soft); font-size:13px; }
+  .auth-close { border:0; background:transparent; color:var(--ink); font-size:24px; cursor:pointer; }
+  .auth-tabs { display:flex; gap:8px; margin-bottom:16px; }
+  .auth-tab { flex:1; border:1px solid var(--rule); border-radius:9px; padding:10px; color:var(--ink); background:transparent; cursor:pointer; }
+  .auth-tab.active { background:var(--board-black); color:var(--led-amber); }
+  .auth-field { display:flex; flex-direction:column; gap:6px; margin:12px 0; }
+  .auth-field label { font-size:12px; font-weight:700; color:var(--ink-soft); }
+  .auth-field input { width:100%; border:1px solid var(--rule); border-radius:9px; padding:12px; background:var(--paper); color:var(--ink); font:14px 'IBM Plex Sans',sans-serif; }
+  .auth-message { min-height:18px; font-size:13px; color:var(--ink-soft); margin:10px 0; }
+  .auth-message.error { color:var(--signal-red); }
+  .auth-submit { width:100%; border:0; border-radius:9px; padding:12px; background:var(--board-black); color:var(--led-amber); font-weight:700; cursor:pointer; }
+  .auth-foot { color:var(--ink-soft); font-size:12px; line-height:1.5; margin-top:14px; }
+  .profile-email { color:var(--ink-soft); overflow-wrap:anywhere; font-size:13px; }
+  @media(max-width:560px) { .account-toolbar { justify-content:center; flex-wrap:wrap; } .account-btn { padding:9px 11px; } .auth-card { padding:19px; } }
+
 </style>
 </head>
 <body>
@@ -280,6 +326,12 @@
       <span id="dateLine"></span>
     </div>
   </div>
+</div>
+
+<div class="account-toolbar">
+  <button class="account-btn" id="themeToggle" type="button" aria-label="Toggle dark mode">🌙 Dark mode</button>
+  <button class="account-btn primary" id="authOpen" type="button">Log in / Sign up</button>
+  <button class="account-btn account-pill" id="profileOpen" type="button" hidden><span class="avatar" id="navAvatar">U</span><span id="navName">My profile</span></button>
 </div>
 
 <div class="nav-groups">
@@ -554,7 +606,7 @@
       </div>
       <div class="field">
         <label for="cfg-key">API key (only used if calling RailRadar directly)</label>
-        <input id="cfg-key" value="">
+        <input id="cfg-key" type="password" placeholder="Leave blank when using the proxy">
       </div>
     </div>
     <div class="note">
@@ -570,7 +622,38 @@
 
 </main>
 
-<footer>Built as a static frontend — no backend, no data stored anywhere.</footer>
+
+<div class="auth-overlay" id="authOverlay" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+  <div class="auth-card">
+    <div class="auth-head"><div><h2 id="authTitle">Welcome aboard</h2><p id="authSubtitle">Sign in to save your railway searches.</p></div><button class="auth-close" id="authClose" aria-label="Close">×</button></div>
+    <div class="auth-tabs" id="authTabs"><button class="auth-tab active" data-auth-mode="login">Log in</button><button class="auth-tab" data-auth-mode="signup">Sign up</button></div>
+    <form id="authForm">
+      <div class="auth-field" id="nameField" hidden><label for="authName">YOUR NAME</label><input id="authName" autocomplete="name" maxlength="80" placeholder="Your name"></div>
+      <div class="auth-field"><label for="authEmail">EMAIL</label><input id="authEmail" type="email" autocomplete="email" required placeholder="you@example.com"></div>
+      <div class="auth-field"><label for="authPassword">PASSWORD</label><input id="authPassword" type="password" autocomplete="current-password" minlength="6" required placeholder="At least 6 characters"></div>
+      <div class="auth-field" id="avatarField" hidden><label for="authAvatar">PROFILE PHOTO URL (OPTIONAL)</label><input id="authAvatar" type="url" placeholder="https://..."></div>
+      <div class="auth-message" id="authMessage" role="status"></div>
+      <button class="auth-submit" id="authSubmit" type="submit">Log in</button>
+    </form>
+    <p class="auth-foot">Your account is managed securely by Supabase. Never share your password with anyone.</p>
+  </div>
+</div>
+
+<div class="auth-overlay" id="profileOverlay" role="dialog" aria-modal="true" aria-labelledby="profileTitle">
+  <div class="auth-card">
+    <div class="auth-head"><div><h2 id="profileTitle">Your profile</h2><p>Manage your personal railway dashboard.</p></div><button class="auth-close" id="profileClose" aria-label="Close">×</button></div>
+    <form id="profileForm">
+      <div class="auth-field"><label for="profileName">DISPLAY NAME</label><input id="profileName" maxlength="80" required></div>
+      <div class="auth-field"><label>EMAIL</label><div class="profile-email" id="profileEmail"></div></div>
+      <div class="auth-field"><label for="profileAvatar">PROFILE PHOTO URL (OPTIONAL)</label><input id="profileAvatar" type="url" placeholder="https://..."></div>
+      <div class="auth-message" id="profileMessage" role="status"></div>
+      <button class="auth-submit" type="submit">Save profile</button>
+    </form>
+    <button class="account-btn" id="logoutBtn" type="button" style="width:100%;margin-top:10px">Log out</button>
+  </div>
+</div>
+
+<footer>Rail Board · Live railway tools · Your account data is managed securely.</footer>
 
 <script>
   // ---------- Split-flap title ----------
@@ -979,6 +1062,108 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+(() => {
+  // Set these in this file to your Supabase project's public URL and publishable/anon key.
+  // Never put a Supabase service_role/secret key in browser code.
+  const SUPABASE_URL = 'https://qldfwmewajhejvhadjkg.supabase.co/rest/v1/';
+  const SUPABASE_ANON_KEY = 'sb_publishable_IdwWrZqw5G0RBOeh3jHLng_MODhkcaq';
+  const configured = SUPABASE_URL.startsWith('https://') && !SUPABASE_URL.includes('PASTE_') && !SUPABASE_ANON_KEY.includes('PASTE_');
+  const $ = id => document.getElementById(id);
+  const authOverlay = $('authOverlay'), profileOverlay = $('profileOverlay');
+  let authMode = 'login', supabaseClient = null, currentUser = null, currentProfile = null;
+
+  function setTheme(theme) {
+    document.body.dataset.theme = theme;
+    localStorage.setItem('rail-board-theme', theme);
+    $('themeToggle').textContent = theme === 'dark' ? '☀️ Light mode' : '🌙 Dark mode';
+  }
+  setTheme(localStorage.getItem('rail-board-theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+  $('themeToggle').addEventListener('click', () => setTheme(document.body.dataset.theme === 'dark' ? 'light' : 'dark'));
+
+  function showMessage(id, message, error=false) { const el=$(id); el.textContent=message; el.classList.toggle('error',error); }
+  function openOverlay(el) { el.classList.add('open'); }
+  function closeOverlay(el) { el.classList.remove('open'); }
+  $('authOpen').addEventListener('click', () => { if(!configured){showMessage('authMessage','Set up Supabase URL and publishable key in index.html first.',true); } openOverlay(authOverlay); });
+  $('authClose').addEventListener('click',()=>closeOverlay(authOverlay));
+  $('profileOpen').addEventListener('click',()=>openOverlay(profileOverlay));
+  $('profileClose').addEventListener('click',()=>closeOverlay(profileOverlay));
+  [authOverlay,profileOverlay].forEach(overlay=>overlay.addEventListener('click',e=>{if(e.target===overlay)closeOverlay(overlay)}));
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeOverlay(authOverlay);closeOverlay(profileOverlay)}});
+
+  function setAuthMode(mode) {
+    authMode=mode;
+    document.querySelectorAll('[data-auth-mode]').forEach(b=>b.classList.toggle('active',b.dataset.authMode===mode));
+    $('nameField').hidden=mode!=='signup'; $('avatarField').hidden=mode!=='signup';
+    $('authTitle').textContent=mode==='signup'?'Create your account':'Welcome aboard';
+    $('authSubtitle').textContent=mode==='signup'?'Create a profile for your railway dashboard.':'Sign in to your railway dashboard.';
+    $('authSubmit').textContent=mode==='signup'?'Create account':'Log in';
+    $('authPassword').autocomplete=mode==='signup'?'new-password':'current-password';
+    showMessage('authMessage','');
+  }
+  document.querySelectorAll('[data-auth-mode]').forEach(b=>b.addEventListener('click',()=>setAuthMode(b.dataset.authMode)));
+
+  function renderUser(user,profile) {
+    currentUser=user; currentProfile=profile;
+    $('authOpen').hidden=!!user; $('profileOpen').hidden=!user;
+    if(!user)return;
+    const name=profile?.display_name || user.user_metadata?.display_name || user.email?.split('@')[0] || 'User';
+    $('navName').textContent=name; $('navAvatar').textContent=name.charAt(0).toUpperCase();
+    $('navAvatar').innerHTML=profile?.avatar_url ? '<img alt="Profile photo">' : name.charAt(0).toUpperCase();
+    const avatarImg=$('navAvatar').querySelector('img'); if(avatarImg) avatarImg.src=profile.avatar_url;
+    $('profileName').value=name; $('profileEmail').textContent=user.email || '';
+    $('profileAvatar').value=profile?.avatar_url || '';
+  }
+  async function loadProfile(user) {
+    const {data,error}=await supabaseClient.from('profiles').select('id,display_name,avatar_url,created_at').eq('id',user.id).maybeSingle();
+    if(error){console.error('Profile load error:',error.message);renderUser(user,null);return;}
+    let profile=data;
+    if(!profile){
+      const display_name=user.user_metadata?.display_name || user.email?.split('@')[0] || 'User';
+      const result=await supabaseClient.from('profiles').upsert({id:user.id,display_name,avatar_url:user.user_metadata?.avatar_url || null}).select().single();
+      if(result.error) console.error('Profile create error:',result.error.message); else profile=result.data;
+    }
+    renderUser(user,profile);
+  }
+  if(configured && window.supabase?.createClient) {
+    supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+    supabaseClient.auth.getSession().then(({data})=>{if(data.session)loadProfile(data.session.user);else renderUser(null,null)});
+    supabaseClient.auth.onAuthStateChange((event,session)=>{
+      if(session?.user) setTimeout(()=>loadProfile(session.user),0); else renderUser(null,null);
+    });
+  } else {
+    console.warn('Supabase is not configured. Authentication will not work until the project URL and public key are set.');
+  }
+  $('authForm').addEventListener('submit',async e=>{
+    e.preventDefault();
+    if(!configured||!supabaseClient){showMessage('authMessage','Pehle Supabase URL aur publishable key configure karo.',true);return;}
+    const email=$('authEmail').value.trim(), password=$('authPassword').value;
+    $('authSubmit').disabled=true; showMessage('authMessage',authMode==='signup'?'Creating account…':'Logging in…');
+    try {
+      let result;
+      if(authMode==='signup') {
+        result=await supabaseClient.auth.signUp({email,password,options:{data:{display_name:$('authName').value.trim(),avatar_url:$('authAvatar').value.trim()||null}}});
+        if(!result.error && !result.data.session) showMessage('authMessage','Account created. Email confirmation enabled hai to inbox check karo.');
+      } else result=await supabaseClient.auth.signInWithPassword({email,password});
+      if(result.error) showMessage('authMessage',result.error.message,true);
+      else if(authMode==='login' && result.data.session){showMessage('authMessage','Login successful.');setTimeout(()=>closeOverlay(authOverlay),400);}
+      else if(authMode==='signup' && result.data.session){showMessage('authMessage','Account created successfully.');setTimeout(()=>closeOverlay(authOverlay),500);}
+    } catch(err){showMessage('authMessage',err.message||'Something went wrong.',true)}
+    finally{$('authSubmit').disabled=false;}
+  });
+  $('profileForm').addEventListener('submit',async e=>{
+    e.preventDefault(); if(!supabaseClient||!currentUser){showMessage('profileMessage','Please log in first.',true);return;}
+    const display_name=$('profileName').value.trim(), avatar_url=$('profileAvatar').value.trim()||null;
+    if(!display_name){showMessage('profileMessage','Name cannot be empty.',true);return;}
+    const {data,error}=await supabaseClient.from('profiles').upsert({id:currentUser.id,display_name,avatar_url}).select().single();
+    if(error)showMessage('profileMessage',error.message,true);else{renderUser(currentUser,data);showMessage('profileMessage','Profile saved successfully.');}
+  });
+  $('logoutBtn').addEventListener('click',async()=>{if(!supabaseClient)return;const {error}=await supabaseClient.auth.signOut();if(error)showMessage('profileMessage',error.message,true);else{closeOverlay(profileOverlay);openOverlay(authOverlay);setAuthMode('login');showMessage('authMessage','You have logged out.');}});
+})();
+</script>
 
 </body>
 </html>
