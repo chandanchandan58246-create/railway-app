@@ -1129,43 +1129,63 @@
     renderUser(user,profile);
   }
  
+// Initialize Supabase
+let supabaseClient = null;
 
-  if (configured && window.supabase?.createClient) {
-    supabaseClient = window.supabase.createClient(
-      SUPABASE_URL,
-      SUPABASE_ANON_KEY,
-      {
-        auth: {
-          autoRefreshToken: true,
-          persistSession: true,
-          detectSessionInUrl: true
-        },
-        global: {
-          headers: {
-            'X-Client-Info': 'railway-live-status'
-          }
+if (configured && window.supabase?.createClient) {
+  supabaseClient = window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_ANON_KEY,
+    {
+      auth: {
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: true
+      },
+      global: {
+        headers: {
+          "X-Client-Info": "railway-live-status"
         }
       }
-    );
+    }
+  );
 
-    supabaseClient.auth.getSession().then(({ data }) => {
-      if (data.session) {
+  // Check existing login session
+  supabaseClient.auth.getSession()
+    .then(({ data, error }) => {
+      if (error) {
+        console.error("Session error:", error.message);
+        renderUser(null, null);
+        return;
+      }
+
+      if (data?.session?.user) {
         loadProfile(data.session.user);
       } else {
         renderUser(null, null);
       }
+    })
+    .catch(error => {
+      console.error("Session check failed:", error);
+      renderUser(null, null);
     });
 
-    supabaseClient.auth.onAuthStateChange((event, session) => {
-      if (session?.user) {
-        setTimeout(() => loadProfile(session.user), 0);
-      } else {
-        renderUser(null, null);
-      }
-    });
-  } else {
-    console.warn('Supabase is not configured. Authentication will not work until the project URL and public key are set.');
-  }
+  // Listen for login and logout changes
+  supabaseClient.auth.onAuthStateChange((event, session) => {
+    if (session?.user) {
+      setTimeout(() => {
+        loadProfile(session.user);
+      }, 0);
+    } else {
+      renderUser(null, null);
+    }
+  });
+
+} else {
+  console.warn(
+    "Supabase is not configured. Check the project URL, publishable key, and Supabase CDN."
+  );
+}
 
   $('authForm').addEventListener('submit',async e=>{
     e.preventDefault();
