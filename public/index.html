@@ -1128,12 +1128,42 @@
     }
     renderUser(user,profile);
   }
-  if(configured && window.supabase?.createClient) {
-    supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
-    supabaseClient.auth.getSession().then(({data})=>{if(data.session)loadProfile(data.session.user);else renderUser(null,null)});
-    supabaseClient.auth.onAuthStateChange((event,session)=>{
-      if(session?.user) setTimeout(()=>loadProfile(session.user),0); else renderUser(null,null);
-    });
+ 
+if (configured && window.supabase?.createClient) {
+  supabaseClient = window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_ANON_KEY,
+    {
+      auth: {
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: true
+      },
+      global: {
+        headers: {
+          'X-Client-Info': 'railway-live-status'
+        }
+      }
+    }
+  );
+
+  supabaseClient.auth.getSession().then(({ data }) => {
+    if (data.session) {
+      loadProfile(data.session.user);
+    } else {
+      renderUser(null, null);
+    }
+  });
+
+  supabaseClient.auth.onAuthStateChange((event, session) => {
+    if (session?.user) {
+      setTimeout(() => loadProfile(session.user), 0);
+    } else {
+      renderUser(null, null);
+    }
+  });
+}
+
   } else {
     console.warn('Supabase is not configured. Authentication will not work until the project URL and public key are set.');
   }
