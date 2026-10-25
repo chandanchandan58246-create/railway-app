@@ -1,0 +1,13 @@
+
+{
+  "name": "railway-live-status",
+  "version": "1.0.0",
+  "description": "Railway live status website",
+  "main": "proxy.js",
+  "scripts": {
+    "start": "node proxy.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}
