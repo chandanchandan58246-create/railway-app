@@ -3,1217 +3,304 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rail Board — Live Status, PNR &amp; Train Info</title>
+<title>Rail Board — Railway Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  :root{
-    --board-black:#12181c;
-    --board-black-2:#1a2228;
-    --led-amber:#ffb93d;
-    --led-amber-dim:#8a6321;
-    --signal-red:#e4483d;
-    --signal-green:#3fa34d;
-    --paper:#f6f3ec;
-    --paper-2:#eee8da;
-    --ink:#1b2430;
-    --ink-soft:#5b6472;
-    --rule:#d9d2bf;
-  }
-  *{box-sizing:border-box;}
-  html,body{margin:0;padding:0;}
-  body{
-    background:var(--paper);
-    color:var(--ink);
-    font-family:'IBM Plex Sans',-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-    line-height:1.4;
-  }
-  @media (prefers-reduced-motion: reduce){
-    *{animation-duration:.001ms !important; transition-duration:.001ms !important;}
-  }
-
-  /* ---------- Hero / Split-flap board ---------- */
-  .board{
-    background:
-      radial-gradient(1200px 400px at 50% -100px, #223038 0%, var(--board-black) 60%);
-    color:var(--led-amber);
-    padding:56px 20px 40px;
-    border-bottom:6px solid var(--board-black-2);
-  }
-  .board-inner{max-width:960px;margin:0 auto;}
-  .board-row{
-    display:flex;
-    flex-wrap:wrap;
-    justify-content:center;
-    gap:6px;
-    margin-bottom:10px;
-  }
-  .flap{
-    font-family:'IBM Plex Mono',Consolas,monospace;
-    font-weight:700;
-    font-size:clamp(20px, 6vw, 40px);
-    background:linear-gradient(180deg,#232d33,#161d21);
-    color:var(--led-amber);
-    padding:6px 4px;
-    min-width:0.85em;
-    text-align:center;
-    border-radius:3px;
-    box-shadow:inset 0 -2px 0 rgba(0,0,0,.5), inset 0 2px 0 rgba(255,255,255,.03);
-    text-shadow:0 0 8px rgba(255,185,61,.55);
-    opacity:0;
-    animation:flapIn .5s ease forwards;
-  }
-  .flap.space{background:transparent;box-shadow:none;text-shadow:none;}
-  @keyframes flapIn{
-    0%{opacity:0; transform:rotateX(90deg); }
-    60%{opacity:1;}
-    100%{opacity:1; transform:rotateX(0deg);}
-  }
-  .board-sub{
-    text-align:center;
-    color:#9fb0b8;
-    font-family:'IBM Plex Mono',monospace;
-    font-size:13px;
-    letter-spacing:.04em;
-    margin-top:18px;
-  }
-  .board-sub .clock{color:var(--led-amber);}
-  .board-sub .dot{color:var(--signal-green); margin:0 6px;}
-
-  .field select{
-    font-family:'IBM Plex Mono',monospace;
-    font-size:15px;
-    padding:10px 11px;
-    border:1px solid var(--rule);
-    background:var(--paper);
-    color:var(--ink);
-  }
-  .field select:focus{outline:2px solid var(--signal-green); outline-offset:1px;}
-
-  /* ---------- Nav groups ---------- */
-  .nav-groups{max-width:960px; margin:-26px auto 0; padding:0 20px; position:relative; z-index:2;}
-  .nav-group{margin-bottom:10px;}
-  .nav-group-label{
-    font-family:'IBM Plex Mono',monospace;
-    font-size:10.5px;
-    letter-spacing:.08em;
-    color:#8a97a3;
-    background:var(--board-black);
-    display:inline-block;
-    padding:2px 8px;
-    margin-bottom:6px;
-  }
-  .nav-group-row{display:flex; gap:10px; flex-wrap:wrap;}
-
-  /* helper text under a field, and inline sub-action link */
-  .subaction{
-    background:none;
-    border:none;
-    padding:0;
-    margin-top:12px;
-    color:var(--ink-soft);
-    font-size:13px;
-    text-decoration:underline;
-    cursor:pointer;
-    font-family:'IBM Plex Sans',sans-serif;
-  }
-  .subaction:hover{color:var(--ink);}
-  .prob-bar{
-    height:22px;
-    background:var(--paper-2);
-    border:1px solid var(--rule);
-    margin-top:10px;
-    position:relative;
-  }
-  .prob-bar-fill{
-    height:100%;
-    background:var(--signal-green);
-  }
-  .prob-bar-label{
-    position:absolute; inset:0;
-    display:flex; align-items:center; justify-content:center;
-    font-family:'IBM Plex Mono',monospace;
-    font-size:12px;
-    font-weight:700;
-    color:var(--ink);
-  }
-  .platform-btn{
-    flex:1 1 200px;
-    background:var(--paper);
-    border:1px solid var(--rule);
-    border-top:4px solid var(--ink-soft);
-    padding:14px 16px;
-    font-family:'IBM Plex Sans',sans-serif;
-    font-size:14.5px;
-    font-weight:600;
-    color:var(--ink-soft);
-    cursor:pointer;
-    text-align:left;
-    transition:border-color .15s ease, color .15s ease, transform .1s ease;
-  }
-  .platform-btn small{display:block; font-weight:400; color:var(--ink-soft); font-size:11.5px; margin-top:3px;}
-  .platform-btn.active{
-    border-top-color:var(--signal-red);
-    color:var(--ink);
-    background:#fff;
-  }
-  .platform-btn:hover{transform:translateY(-1px);}
-
-  /* ---------- Content area ---------- */
-  main{max-width:960px; margin:0 auto; padding:28px 20px 80px;}
-  .panel{display:none;}
-  .panel.active{display:block; animation:riseIn .35s ease;}
-  @keyframes riseIn{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
-
-  .ticket{
-    background:#fff;
-    border:1px solid var(--rule);
-    padding:22px;
-    position:relative;
-  }
-  .ticket::before{
-    content:"";
-    position:absolute; left:0; right:0; top:0; height:3px;
-    background:repeating-linear-gradient(90deg, var(--ink-soft) 0 10px, transparent 10px 18px);
-    opacity:.35;
-  }
-  h2.panel-title{
-    margin:0 0 4px;
-    font-size:20px;
-    font-weight:700;
-  }
-  p.panel-desc{margin:0 0 20px; color:var(--ink-soft); font-size:14px;}
-
-  .field-row{display:flex; gap:12px; flex-wrap:wrap; margin-bottom:14px;}
-  .field{flex:1 1 180px; display:flex; flex-direction:column; gap:6px;}
-  .field label{font-size:12.5px; font-weight:600; color:var(--ink-soft);}
-  .field input{
-    font-family:'IBM Plex Mono',monospace;
-    font-size:15px;
-    padding:10px 11px;
-    border:1px solid var(--rule);
-    background:var(--paper);
-    color:var(--ink);
-  }
-  .field input:focus{outline:2px solid var(--signal-green); outline-offset:1px;}
-
-  .go-btn{
-    background:var(--board-black);
-    color:var(--led-amber);
-    border:none;
-    font-family:'IBM Plex Mono',monospace;
-    font-weight:700;
-    letter-spacing:.03em;
-    padding:11px 22px;
-    cursor:pointer;
-    font-size:14px;
-  }
-  .go-btn:hover{background:var(--board-black-2);}
-  .go-btn:disabled{opacity:.5; cursor:default;}
-
-  .status-line{margin-top:16px; font-size:13.5px; color:var(--ink-soft); min-height:18px;}
-  .status-line.err{color:var(--signal-red); font-weight:600;}
-
-  /* result board rows */
-  .result-board{margin-top:18px; border:1px solid var(--rule);}
-  .rb-row{
-    display:grid;
-    grid-template-columns:1fr auto;
-    gap:10px;
-    padding:10px 14px;
-    border-bottom:1px solid var(--rule);
-    font-family:'IBM Plex Mono',monospace;
-    font-size:13.5px;
-  }
-  .rb-row:last-child{border-bottom:none;}
-  .rb-row .lbl{color:var(--ink-soft); font-family:'IBM Plex Sans',sans-serif; font-size:12px; display:block; margin-bottom:2px;}
-  .tag{
-    display:inline-block;
-    padding:2px 8px;
-    font-size:11.5px;
-    font-weight:700;
-    border-radius:2px;
-  }
-  .tag.green{background:rgba(63,163,77,.12); color:var(--signal-green);}
-  .tag.red{background:rgba(228,72,61,.12); color:var(--signal-red);}
-  .tag.amber{background:rgba(255,185,61,.18); color:#8a6321;}
-
-  pre.raw{
-    background:var(--board-black);
-    color:#9fdca0;
-    padding:14px;
-    font-size:12px;
-    overflow:auto;
-    max-height:340px;
-    margin-top:14px;
-    font-family:'IBM Plex Mono',monospace;
-  }
-
-  /* ---------- Settings ---------- */
-  details.settings{margin-top:24px; border:1px dashed var(--rule); padding:14px 16px;}
-  details.settings summary{cursor:pointer; font-weight:600; font-size:13.5px; color:var(--ink-soft);}
-  .settings-grid{display:flex; gap:12px; flex-wrap:wrap; margin-top:14px;}
-  .note{
-    background:var(--paper-2);
-    border-left:3px solid var(--signal-amber, var(--led-amber));
-    padding:10px 14px;
-    font-size:12.5px;
-    color:var(--ink-soft);
-    margin-top:14px;
-  }
-
-  footer{
-    text-align:center;
-    color:var(--ink-soft);
-    font-size:12px;
-    padding:20px;
-  }
-
-  /* ---------- Account and theme upgrade ---------- */
-  :root { color-scheme: light; }
-  body[data-theme="dark"] {
-    color-scheme: dark;
-    --paper:#0d1318; --paper-2:#151e25; --ink:#e8eef3; --ink-soft:#a7b4bf;
-    --rule:#34414b; --board-black:#080d11; --board-black-2:#111a20;
-  }
-  body[data-theme="dark"] .ticket, body[data-theme="dark"] .platform-btn.active {
-    background:#151e25; color:var(--ink); border-color:var(--rule);
-  }
-  body[data-theme="dark"] .field input, body[data-theme="dark"] .field select {
-    background:#0d1318; color:var(--ink); border-color:var(--rule);
-  }
-  body[data-theme="dark"] .prob-bar { background:#202b33; border-color:var(--rule); }
-  body[data-theme="dark"] .prob-bar-label { color:#f1f5f8; }
-  body[data-theme="dark"] .note { background:#18232b; color:var(--ink-soft); }
-  body[data-theme="dark"] .platform-btn { background:#111a20; border-color:var(--rule); color:var(--ink-soft); }
-  body[data-theme="dark"] .platform-btn.active { border-top-color:var(--signal-red); color:var(--ink); }
-  .account-toolbar { max-width:960px; margin:12px auto 34px; padding:0 20px; display:flex; justify-content:flex-end; align-items:center; gap:9px; position:relative; z-index:3; }
-  .account-btn { border:1px solid var(--rule); background:var(--paper); color:var(--ink); border-radius:999px; padding:9px 14px; font:600 13px 'IBM Plex Sans',sans-serif; cursor:pointer; }
-  .account-btn.primary { background:var(--board-black); color:var(--led-amber); border-color:var(--board-black); }
-  .account-btn:hover { transform:translateY(-1px); }
-  .account-pill { display:flex; align-items:center; gap:8px; }
-  .avatar { width:28px; height:28px; border-radius:50%; display:inline-grid; place-items:center; background:var(--led-amber); color:#111; font-weight:700; overflow:hidden; }
-  .avatar img { width:100%; height:100%; object-fit:cover; }
-  .auth-overlay { display:none; position:fixed; inset:0; z-index:1000; background:rgba(3,8,12,.72); backdrop-filter:blur(8px); padding:18px; align-items:center; justify-content:center; }
-  .auth-overlay.open { display:flex; }
-  .auth-card { width:min(100%,430px); max-height:90vh; overflow:auto; background:var(--paper); color:var(--ink); border:1px solid var(--rule); border-radius:18px; padding:24px; box-shadow:0 25px 90px rgba(0,0,0,.35); }
-  .auth-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:18px; }
-  .auth-head h2 { margin:0 0 5px; font-size:22px; }
-  .auth-head p { margin:0; color:var(--ink-soft); font-size:13px; }
-  .auth-close { border:0; background:transparent; color:var(--ink); font-size:24px; cursor:pointer; }
-  .auth-tabs { display:flex; gap:8px; margin-bottom:16px; }
-  .auth-tab { flex:1; border:1px solid var(--rule); border-radius:9px; padding:10px; color:var(--ink); background:transparent; cursor:pointer; }
-  .auth-tab.active { background:var(--board-black); color:var(--led-amber); }
-  .auth-field { display:flex; flex-direction:column; gap:6px; margin:12px 0; }
-  .auth-field label { font-size:12px; font-weight:700; color:var(--ink-soft); }
-  .auth-field input { width:100%; border:1px solid var(--rule); border-radius:9px; padding:12px; background:var(--paper); color:var(--ink); font:14px 'IBM Plex Sans',sans-serif; }
-  .auth-message { min-height:18px; font-size:13px; color:var(--ink-soft); margin:10px 0; }
-  .auth-message.error { color:var(--signal-red); }
-  .auth-submit { width:100%; border:0; border-radius:9px; padding:12px; background:var(--board-black); color:var(--led-amber); font-weight:700; cursor:pointer; }
-  .auth-foot { color:var(--ink-soft); font-size:12px; line-height:1.5; margin-top:14px; }
-  .profile-email { color:var(--ink-soft); overflow-wrap:anywhere; font-size:13px; }
-  @media(max-width:560px) { .account-toolbar { justify-content:center; flex-wrap:wrap; } .account-btn { padding:9px 11px; } .auth-card { padding:19px; } }
-
+:root{--side:#10171c;--side2:#1a242b;--amber:#ffb93d;--red:#e4483d;--green:#2f9e44;--bg:#f2f0ea;--card:#fff;--ink:#17212b;--soft:#5d6875;--rule:#ddd8c8;--r:10px;color-scheme:light}
+body[data-theme=dark]{--bg:#0c1217;--card:#151e25;--ink:#e8eef3;--soft:#a2afba;--rule:#2d3a44;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 'IBM Plex Sans',Segoe UI,Arial,sans-serif}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.app{display:grid;grid-template-columns:240px 1fr;min-height:100vh}
+aside{background:var(--side);color:#c5d0d8;padding:20px 12px;position:sticky;top:0;height:100vh;overflow:auto}
+.brand{font:700 20px 'IBM Plex Mono',monospace;color:var(--amber);letter-spacing:.06em;padding:0 10px 18px;text-shadow:0 0 10px rgba(255,185,61,.45)}
+.grp{font-size:12px;color:#7f8d98;padding:14px 10px 6px}
+.nav{display:block;width:100%;text-align:left;background:none;border:0;border-left:3px solid transparent;padding:9px 10px;border-radius:0 6px 6px 0;color:#c5d0d8;cursor:pointer}
+.nav:hover{background:var(--side2)}
+.nav.on{background:var(--side2);border-left-color:var(--amber);color:#fff;font-weight:600}
+.top{display:flex;align-items:center;gap:10px;padding:14px 28px;border-bottom:1px solid var(--rule);background:var(--card);position:sticky;top:0;z-index:5}
+.top h1{margin:0;font-size:19px;flex:1}
+.btn{border:1px solid var(--rule);background:var(--card);border-radius:999px;padding:7px 14px;cursor:pointer;font-weight:600;font-size:13px}
+.btn.pri{background:var(--side);color:var(--amber);border-color:var(--side)}
+.btn:hover{filter:brightness(1.1)}
+.avatar{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--amber);color:#111;font-weight:700;overflow:hidden;margin-right:6px;vertical-align:middle}
+.avatar img{width:100%;height:100%;object-fit:cover}
+main{padding:24px 28px 60px;max-width:1080px}
+.panel{display:none}.panel.on{display:block}
+.card{background:var(--card);border:1px solid var(--rule);border-radius:var(--r);padding:20px;margin-bottom:18px}
+.card h2{margin:0 0 4px;font-size:18px}.card p.d{margin:0 0 16px;color:var(--soft);font-size:14px}
+.board{background:var(--side);border-radius:var(--r);padding:22px 24px;margin-bottom:18px;display:flex;flex-wrap:wrap;gap:12px 28px;align-items:center;justify-content:space-between}
+.board .clk{font:700 clamp(34px,6vw,54px)/1 'IBM Plex Mono',monospace;color:var(--amber);text-shadow:0 0 14px rgba(255,185,61,.5)}
+.board .dt{color:#9fb0b8;font-size:14px;margin-top:6px}
+.board .hi{color:#e8eef3;font-size:18px;font-weight:600;max-width:340px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px}
+form.f{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
+.fl{display:flex;flex-direction:column;gap:5px;flex:1 1 150px}
+.fl label{font-size:12.5px;font-weight:600;color:var(--soft)}
+.fl input,.fl select{padding:10px 11px;border:1px solid var(--rule);border-radius:7px;background:var(--bg)}
+.go{background:var(--side);color:var(--amber);border:0;border-radius:7px;padding:11px 22px;font-weight:700;cursor:pointer}
+.go:disabled{opacity:.5}
+.st{margin-top:12px;font-size:13px;color:var(--soft);min-height:18px}.st.err{color:var(--red);font-weight:600}
+.opts{margin-top:10px;font-size:13px;color:var(--soft)}
+dl.kv{margin:16px 0 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+dl.kv>div{border-left:3px solid var(--rule);padding-left:10px}
+dt{font-size:12px;color:var(--soft)}dd{margin:2px 0 0;font-weight:600;overflow-wrap:anywhere}
+.hero{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin-top:18px;padding:14px 16px;border-radius:8px;background:var(--bg)}
+.hero b{font-size:17px}
+.tag{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12.5px;font-weight:700}
+.tag.green{background:rgba(47,158,68,.15);color:var(--green)}.tag.red{background:rgba(228,72,61,.15);color:var(--red)}.tag.amber{background:rgba(255,185,61,.25);color:#8a6000}
+body[data-theme=dark] .tag.amber{color:var(--amber)}
+.tw{overflow-x:auto;margin-top:16px;border:1px solid var(--rule);border-radius:8px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--rule);white-space:nowrap}
+th{font-size:12px;color:var(--soft);background:var(--bg)}tr:last-child td{border-bottom:0}
+.bar{height:24px;background:var(--bg);border-radius:6px;overflow:hidden;position:relative;margin-top:12px}
+.bar i{display:block;height:100%}.bar span{position:absolute;inset:0;display:grid;place-items:center;font-weight:700;font-size:12px}
+.skel{height:90px;margin-top:16px;border-radius:8px;background:linear-gradient(90deg,var(--bg),var(--rule),var(--bg));background-size:200% 100%;animation:sk 1.2s linear infinite}
+@keyframes sk{to{background-position:-200% 0}}
+details.raw{margin-top:14px;font-size:13px;color:var(--soft)}
+details.raw pre{background:var(--side);color:#9fdca0;padding:12px;border-radius:8px;overflow:auto;max-height:280px;font-size:12px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--rule);background:var(--bg);border-radius:999px;padding:6px 12px;font-size:13px;cursor:pointer}
+.chip:hover{border-color:var(--amber)}
+.ov{display:none;position:fixed;inset:0;z-index:50;background:rgba(3,8,12,.7);padding:18px;align-items:center;justify-content:center}
+.ov.open{display:flex}
+.ov .box{width:min(100%,420px);max-height:90vh;overflow:auto;background:var(--card);border-radius:14px;padding:22px;border:1px solid var(--rule)}
+.ov h2{margin:0}.ov .sub{color:var(--soft);font-size:13px;margin:4px 0 14px}
+.ov .fl{margin:10px 0}
+.tabs{display:flex;gap:8px;margin-bottom:10px}.tabs button{flex:1;padding:9px;border:1px solid var(--rule);border-radius:8px;background:none;cursor:pointer}
+.tabs button.on{background:var(--side);color:var(--amber)}
+.msg{min-height:18px;font-size:13px;color:var(--soft);margin:8px 0}.msg.err{color:var(--red)}
+.x{float:right;background:none;border:0;font-size:24px;cursor:pointer}
+footer{padding:0 28px 24px;color:var(--soft);font-size:12px}
+@media(max-width:820px){.app{grid-template-columns:1fr}aside{position:static;height:auto;display:flex;flex-wrap:nowrap;overflow-x:auto;padding:10px;gap:4px;align-items:center}.brand{padding:0 10px}.grp{display:none}.nav{width:auto;white-space:nowrap;border-left:0;border-bottom:3px solid transparent;border-radius:6px}.nav.on{border-bottom-color:var(--amber)}.top,main{padding-left:16px;padding-right:16px}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important}}
 </style>
 </head>
 <body>
-
-<div class="board">
-  <div class="board-inner">
-    <div class="board-row" id="titleFlap"></div>
-    <div class="board-row" id="subFlap"></div>
-    <div class="board-sub">
-      <span class="clock" id="clock">--:--:--</span>
-      <span class="dot">●</span>
-      <span id="dateLine"></span>
-    </div>
+<div class="app">
+<aside id="side"><div class="brand">RAIL BOARD</div></aside>
+<div>
+  <div class="top">
+    <h1 id="title">Overview</h1>
+    <button class="btn" id="themeBtn" type="button">Dark mode</button>
+    <button class="btn pri" id="authOpen" type="button">Log in / Sign up</button>
+    <button class="btn" id="profileOpen" type="button" hidden><span class="avatar" id="navAvatar">U</span><span id="navName">Profile</span></button>
   </div>
+  <main>
+    <section class="panel on" id="p-home">
+      <div class="board">
+        <div><div class="clk" id="clk">--:--:--</div><div class="dt" id="dt"></div></div>
+        <div class="hi" id="hi">Track a train, check a PNR or find seats. All in one place.</div>
+      </div>
+      <div class="grid">
+        <div class="card"><h2>Where is my train?</h2><p class="d">Enter a train number for live position and delay.</p>
+          <form class="f" id="qLive"><div class="fl"><label for="qL">Train number</label><input id="qL" inputmode="numeric" maxlength="5" placeholder="12951" required></div><button class="go">Track</button></form></div>
+        <div class="card"><h2>Check PNR</h2><p class="d">Booking, seat and chart status.</p>
+          <form class="f" id="qPnr"><div class="fl"><label for="qP">PNR number</label><input id="qP" inputmode="numeric" maxlength="10" placeholder="10 digits" required></div><button class="go">Check</button></form></div>
+      </div>
+      <div class="card"><h2>Recent searches</h2><p class="d">Tap one to run it again.</p><div class="chips" id="recent"></div></div>
+    </section>
+    <div id="panels"></div>
+  </main>
+  <footer>Rail Board. Data from RailRadar. Always confirm critical details with IRCTC or the station.</footer>
+</div>
 </div>
 
-<div class="account-toolbar">
-  <button class="account-btn" id="themeToggle" type="button" aria-label="Toggle dark mode">🌙 Dark mode</button>
-  <button class="account-btn primary" id="authOpen" type="button">Log in / Sign up</button>
-  <button class="account-btn account-pill" id="profileOpen" type="button" hidden><span class="avatar" id="navAvatar">U</span><span id="navName">My profile</span></button>
-</div>
-
-<div class="nav-groups">
-  <div class="nav-group">
-    <span class="nav-group-label">TRAINS</span>
-    <div class="nav-group-row">
-      <button class="platform-btn active" data-panel="live">Live Status<small>Where is my train, right now</small></button>
-      <button class="platform-btn" data-panel="train">Train Info<small>Route, stops &amp; schedule</small></button>
-      <button class="platform-btn" data-panel="between">Between Stations<small>Find a connection</small></button>
-      <button class="platform-btn" data-panel="seats">Seat Availability<small>14-day forecast by class</small></button>
-      <button class="platform-btn" data-panel="fare">Fare Calculator<small>Itemized ticket price</small></button>
-    </div>
-  </div>
-  <div class="nav-group">
-    <span class="nav-group-label">PNR</span>
-    <div class="nav-group-row">
-      <button class="platform-btn" data-panel="pnr">PNR Status<small>Booking &amp; seat confirmation</small></button>
-    </div>
-  </div>
-  <div class="nav-group">
-    <span class="nav-group-label">STATIONS &amp; LOOKUP</span>
-    <div class="nav-group-row">
-      <button class="platform-btn" data-panel="board">Station Board<small>Live arrivals &amp; departures</small></button>
-      <button class="platform-btn" data-panel="search">Quick Search<small>Find a station or train code</small></button>
-    </div>
-  </div>
-</div>
-
-<main>
-
-  <!-- LIVE STATUS -->
-  <section class="panel active" id="panel-live">
-    <div class="ticket">
-      <h2 class="panel-title">Live train status</h2>
-      <p class="panel-desc">Enter a train number to see its current running position and delay.</p>
-      <div class="field-row">
-        <div class="field">
-          <label for="live-no">Train number</label>
-          <input id="live-no" placeholder="e.g. 12951" inputmode="numeric" maxlength="5">
-        </div>
-        <div class="field">
-          <label for="live-date">Journey date</label>
-          <input id="live-date" type="date">
-        </div>
-      </div>
-      <button class="go-btn" data-action="live">Check status</button>
-      <div class="status-line" id="live-status"></div>
-      <div id="live-result"></div>
-    </div>
-  </section>
-
-  <!-- PNR -->
-  <section class="panel" id="panel-pnr">
-    <div class="ticket">
-      <h2 class="panel-title">PNR status</h2>
-      <p class="panel-desc">Enter your 10-digit PNR to check booking and seat confirmation.</p>
-      <div class="field-row">
-        <div class="field">
-          <label for="pnr-no">PNR number</label>
-          <input id="pnr-no" placeholder="10-digit PNR" inputmode="numeric" maxlength="10">
-        </div>
-      </div>
-      <button class="go-btn" data-action="pnr">Check PNR</button>
-      <div class="status-line" id="pnr-status"></div>
-      <div id="pnr-result"></div>
-      <button class="subaction" data-action="predict">Also check confirmation chances →</button>
-      <div class="status-line" id="predict-status"></div>
-      <div id="predict-result"></div>
-    </div>
-  </section>
-
-  <!-- TRAIN INFO -->
-  <section class="panel" id="panel-train">
-    <div class="ticket">
-      <h2 class="panel-title">Train info &amp; route</h2>
-      <p class="panel-desc">Look up a train's name, route and stoppages by number.</p>
-      <div class="field-row">
-        <div class="field">
-          <label for="train-no">Train number</label>
-          <input id="train-no" placeholder="e.g. 12301" inputmode="numeric" maxlength="5">
-        </div>
-      </div>
-      <button class="go-btn" data-action="train">Get details</button>
-      <div class="status-line" id="train-status"></div>
-      <div id="train-result"></div>
-    </div>
-  </section>
-
-  <!-- BETWEEN STATIONS -->
-  <section class="panel" id="panel-between">
-    <div class="ticket">
-      <h2 class="panel-title">Trains between stations</h2>
-      <p class="panel-desc">Enter station codes to see trains running between them.</p>
-      <div class="field-row">
-        <div class="field">
-          <label for="from-code">From (station code)</label>
-          <input id="from-code" placeholder="e.g. NDLS" maxlength="8" style="text-transform:uppercase;">
-        </div>
-        <div class="field">
-          <label for="to-code">To (station code)</label>
-          <input id="to-code" placeholder="e.g. BCT" maxlength="8" style="text-transform:uppercase;">
-        </div>
-      </div>
-      <button class="go-btn" data-action="between">Find trains</button>
-      <div class="status-line" id="between-status"></div>
-      <div id="between-result"></div>
-    </div>
-  </section>
-
-  <!-- SEAT AVAILABILITY -->
-  <section class="panel" id="panel-seats">
-    <div class="ticket">
-      <h2 class="panel-title">Seat availability</h2>
-      <p class="panel-desc">14-day IRCTC availability forecast for a train, class and quota.</p>
-      <div class="field-row">
-        <div class="field">
-          <label for="seats-no">Train number</label>
-          <input id="seats-no" placeholder="e.g. 12952" inputmode="numeric" maxlength="5">
-        </div>
-        <div class="field">
-          <label for="seats-date">Journey date</label>
-          <input id="seats-date" type="date">
-        </div>
-      </div>
-      <div class="field-row">
-        <div class="field">
-          <label for="seats-from">From (station code)</label>
-          <input id="seats-from" placeholder="e.g. NDLS" maxlength="8" style="text-transform:uppercase;">
-        </div>
-        <div class="field">
-          <label for="seats-to">To (station code)</label>
-          <input id="seats-to" placeholder="e.g. MMCT" maxlength="8" style="text-transform:uppercase;">
-        </div>
-        <div class="field">
-          <label for="seats-class">Class</label>
-          <select id="seats-class">
-            <option value="SL">Sleeper (SL)</option>
-            <option value="3A" selected>AC 3-Tier (3A)</option>
-            <option value="2A">AC 2-Tier (2A)</option>
-            <option value="1A">AC First Class (1A)</option>
-            <option value="3E">AC 3-Economy (3E)</option>
-            <option value="CC">Chair Car (CC)</option>
-            <option value="2S">Second Sitting (2S)</option>
-          </select>
-        </div>
-        <div class="field">
-          <label for="seats-quota">Quota</label>
-          <select id="seats-quota">
-            <option value="GN" selected>General (GN)</option>
-            <option value="TQ">Tatkal (TQ)</option>
-            <option value="PT">Premium Tatkal (PT)</option>
-            <option value="LD">Ladies (LD)</option>
-            <option value="SS">Senior Citizen (SS)</option>
-          </select>
-        </div>
-      </div>
-      <button class="go-btn" data-action="seats">Check availability</button>
-      <div class="status-line" id="seats-status"></div>
-      <div id="seats-result"></div>
-    </div>
-  </section>
-
-  <!-- FARE CALCULATOR -->
-  <section class="panel" id="panel-fare">
-    <div class="ticket">
-      <h2 class="panel-title">Fare calculator</h2>
-      <p class="panel-desc">Itemized ticket price — base fare, surcharges, GST and catering.</p>
-      <div class="field-row">
-        <div class="field">
-          <label for="fare-no">Train number</label>
-          <input id="fare-no" placeholder="e.g. 12952" inputmode="numeric" maxlength="5">
-        </div>
-        <div class="field">
-          <label for="fare-date">Journey date</label>
-          <input id="fare-date" type="date">
-        </div>
-      </div>
-      <div class="field-row">
-        <div class="field">
-          <label for="fare-from">From (station code)</label>
-          <input id="fare-from" placeholder="e.g. NDLS" maxlength="8" style="text-transform:uppercase;">
-        </div>
-        <div class="field">
-          <label for="fare-to">To (station code)</label>
-          <input id="fare-to" placeholder="e.g. MMCT" maxlength="8" style="text-transform:uppercase;">
-        </div>
-        <div class="field">
-          <label for="fare-class">Class</label>
-          <select id="fare-class">
-            <option value="SL">Sleeper (SL)</option>
-            <option value="3A" selected>AC 3-Tier (3A)</option>
-            <option value="2A">AC 2-Tier (2A)</option>
-            <option value="1A">AC First Class (1A)</option>
-            <option value="3E">AC 3-Economy (3E)</option>
-            <option value="CC">Chair Car (CC)</option>
-            <option value="2S">Second Sitting (2S)</option>
-          </select>
-        </div>
-        <div class="field">
-          <label for="fare-quota">Quota</label>
-          <select id="fare-quota">
-            <option value="GN" selected>General (GN)</option>
-            <option value="TQ">Tatkal (TQ)</option>
-            <option value="PT">Premium Tatkal (PT)</option>
-            <option value="LD">Ladies (LD)</option>
-            <option value="SS">Senior Citizen (SS)</option>
-          </select>
-        </div>
-      </div>
-      <button class="go-btn" data-action="fare">Calculate fare</button>
-      <div class="status-line" id="fare-status"></div>
-      <div id="fare-result"></div>
-    </div>
-  </section>
-
-  <!-- STATION LIVE BOARD -->
-  <section class="panel" id="panel-board">
-    <div class="ticket">
-      <h2 class="panel-title">Station live board</h2>
-      <p class="panel-desc">Arrivals and departures at a station, right now.</p>
-      <div class="field-row">
-        <div class="field">
-          <label for="board-code">Station code</label>
-          <input id="board-code" placeholder="e.g. NDLS" maxlength="8" style="text-transform:uppercase;">
-        </div>
-        <div class="field">
-          <label for="board-hours">Look ahead</label>
-          <select id="board-hours">
-            <option value="2">2 hours</option>
-            <option value="4" selected>4 hours</option>
-            <option value="6">6 hours</option>
-            <option value="8">8 hours</option>
-          </select>
-        </div>
-      </div>
-      <button class="go-btn" data-action="board">Show board</button>
-      <div class="status-line" id="board-status"></div>
-      <div id="board-result"></div>
-    </div>
-  </section>
-
-  <!-- QUICK SEARCH -->
-  <section class="panel" id="panel-search">
-    <div class="ticket">
-      <h2 class="panel-title">Quick search</h2>
-      <p class="panel-desc">Find a station code by city/name, or a train number by name.</p>
-      <div class="field-row">
-        <div class="field" style="flex:2 1 240px;">
-          <label for="search-q">Search</label>
-          <input id="search-q" placeholder="e.g. Delhi, or Shatabdi, or 12951">
-        </div>
-        <div class="field">
-          <label for="search-type">Looking for</label>
-          <select id="search-type">
-            <option value="stations">Stations</option>
-            <option value="trains">Trains</option>
-          </select>
-        </div>
-      </div>
-      <button class="go-btn" data-action="search">Search</button>
-      <div class="status-line" id="search-status"></div>
-      <div id="search-result"></div>
-    </div>
-  </section>
-
-  <details class="settings" open>
-    <summary>API connection settings</summary>
-    <div class="settings-grid">
-      <div class="field">
-        <label for="cfg-base">Base URL</label>
-        <input id="cfg-base" value="/api/v1">
-      </div>
-      <div class="field">
-        <label for="cfg-key">API key (only used if calling RailRadar directly)</label>
-        <input id="cfg-key" type="password" placeholder="Leave blank when using the proxy">
-      </div>
-    </div>
-    <div class="note">
-      <b>"Failed to fetch" fix:</b> RailRadar's API doesn't send the browser CORS headers needed for a page to call
-      it directly, so a pure frontend can't reach <code>api.railradar.in</code> on its own. This site now points at
-      a tiny local proxy instead — download <code>proxy.js</code> (shared alongside this file), run
-      <code>node proxy.js</code> in a terminal, and leave Base URL as-is. The proxy holds your API key server-side
-      and forwards requests, so the key field above can stay blank. If you'd rather call RailRadar directly (e.g.
-      once you confirm with their support that CORS is enabled for your plan), set Base URL back to
-      <code>https://api.railradar.in/v1</code> and put your key in the field above.
-    </div>
-  </details>
-
-</main>
-
-
-<div class="auth-overlay" id="authOverlay" role="dialog" aria-modal="true" aria-labelledby="authTitle">
-  <div class="auth-card">
-    <div class="auth-head"><div><h2 id="authTitle">Welcome aboard</h2><p id="authSubtitle">Sign in to save your railway searches.</p></div><button class="auth-close" id="authClose" aria-label="Close">×</button></div>
-    <div class="auth-tabs" id="authTabs"><button class="auth-tab active" data-auth-mode="login">Log in</button><button class="auth-tab" data-auth-mode="signup">Sign up</button></div>
-    <form id="authForm">
-      <div class="auth-field" id="nameField" hidden><label for="authName">YOUR NAME</label><input id="authName" autocomplete="name" maxlength="80" placeholder="Your name"></div>
-      <div class="auth-field"><label for="authEmail">EMAIL</label><input id="authEmail" type="email" autocomplete="email" required placeholder="you@example.com"></div>
-      <div class="auth-field"><label for="authPassword">PASSWORD</label><input id="authPassword" type="password" autocomplete="current-password" minlength="6" required placeholder="At least 6 characters"></div>
-      <div class="auth-field" id="avatarField" hidden><label for="authAvatar">PROFILE PHOTO URL (OPTIONAL)</label><input id="authAvatar" type="url" placeholder="https://..."></div>
-      <div class="auth-message" id="authMessage" role="status"></div>
-      <button class="auth-submit" id="authSubmit" type="submit">Log in</button>
-    </form>
-    <p class="auth-foot">Your account is managed securely by Supabase. Never share your password with anyone.</p>
-  </div>
-</div>
-
-<div class="auth-overlay" id="profileOverlay" role="dialog" aria-modal="true" aria-labelledby="profileTitle">
-  <div class="auth-card">
-    <div class="auth-head"><div><h2 id="profileTitle">Your profile</h2><p>Manage your personal railway dashboard.</p></div><button class="auth-close" id="profileClose" aria-label="Close">×</button></div>
-    <form id="profileForm">
-      <div class="auth-field"><label for="profileName">DISPLAY NAME</label><input id="profileName" maxlength="80" required></div>
-      <div class="auth-field"><label>EMAIL</label><div class="profile-email" id="profileEmail"></div></div>
-      <div class="auth-field"><label for="profileAvatar">PROFILE PHOTO URL (OPTIONAL)</label><input id="profileAvatar" type="url" placeholder="https://..."></div>
-      <div class="auth-message" id="profileMessage" role="status"></div>
-      <button class="auth-submit" type="submit">Save profile</button>
-    </form>
-    <button class="account-btn" id="logoutBtn" type="button" style="width:100%;margin-top:10px">Log out</button>
-  </div>
-</div>
-
-<footer>Rail Board · Live railway tools · Your account data is managed securely.</footer>
-
-<script>
-  // ---------- Split-flap title ----------
-  function renderFlaps(container, text){
-    container.innerHTML = '';
-    [...text].forEach((ch, i) => {
-      const span = document.createElement('span');
-      span.className = 'flap' + (ch === ' ' ? ' space' : '');
-      span.textContent = ch === ' ' ? '' : ch;
-      span.style.animationDelay = (i * 35) + 'ms';
-      container.appendChild(span);
-    });
-  }
-  renderFlaps(document.getElementById('titleFlap'), 'RAIL BOARD');
-  renderFlaps(document.getElementById('subFlap'), 'STATUS · PNR · SEATS · FARE');
-
-  function tickClock(){
-    const now = new Date();
-    document.getElementById('clock').textContent = now.toLocaleTimeString('en-IN', { hour12:false });
-    document.getElementById('dateLine').textContent = now.toLocaleDateString('en-IN', { weekday:'short', day:'2-digit', month:'short', year:'numeric' });
-  }
-  tickClock();
-  setInterval(tickClock, 1000);
-
-  // default journey date = today
-  document.getElementById('live-date').value = new Date().toISOString().slice(0,10);
-  document.getElementById('seats-date').value = new Date().toISOString().slice(0,10);
-  document.getElementById('fare-date').value = new Date().toISOString().slice(0,10);
-
-  // ---------- Tab switching ----------
-  document.querySelectorAll('.platform-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.platform-btn').forEach(b => b.classList.remove('active'));
-      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-      btn.classList.add('active');
-      document.getElementById('panel-' + btn.dataset.panel).classList.add('active');
-    });
-  });
-
-  // ---------- API layer ----------
-  // Matches RailRadar's published reference docs (railradar.in/docs) as of this build.
-  const ENDPOINTS = {
-    live:    (no, date) => `/trains/${no}/live` + (date ? `?date=${date}` : ''),
-    pnr:     (pnr)       => `/pnr/${pnr}`,
-    predict: (pnr)       => `/pnr/${pnr}/prediction`,
-    train:   (no)         => `/trains/${no}?haltsOnly=true`,
-    between: (from, to, date) => `/trains/between/${from}/${to}` + (date ? `?date=${date}` : ''),
-    seats:   (no, params) => `/trains/${no}/seats?` + new URLSearchParams(params).toString(),
-    fare:    (no, params) => `/trains/${no}/fare?` + new URLSearchParams(params).toString(),
-    board:   (code, params) => `/stations/${code}/live?` + new URLSearchParams(params).toString(),
-    search:  (kind, q) => `/lookup/search/${kind}?q=${encodeURIComponent(q)}&limit=20`,
-  };
-
-  function cfg(){
-    return {
-      base: document.getElementById('cfg-base').value.trim().replace(/\/+$/,''),
-      key: document.getElementById('cfg-key').value.trim(),
-    };
-  }
-
-  async function callApi(path){
-    const { base, key } = cfg();
-    const headers = { 'Accept':'application/json' };
-    if(key){ headers['Authorization'] = 'Bearer ' + key; }
-    const res = await fetch(base + path, { headers });
-    let body;
-    const text = await res.text();
-    try { body = JSON.parse(text); } catch(e){ body = text; }
-    if(!res.ok || body?.success === false){
-      const msg = body?.error?.message || `Request failed (HTTP ${res.status})`;
-      const err = new Error(msg);
-      err.body = body;
-      throw err;
-    }
-    return body;
-  }
-
-  function setStatus(id, msg, isErr){
-    const el = document.getElementById(id);
-    el.textContent = msg;
-    el.className = 'status-line' + (isErr ? ' err' : '');
-  }
-
-  function rawBlock(data){
-    const pre = document.createElement('pre');
-    pre.className = 'raw';
-    pre.textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
-    return pre;
-  }
-
-  function row(label, value, tagClass){
-    const div = document.createElement('div');
-    div.className = 'rb-row';
-    const l = document.createElement('div');
-    l.innerHTML = `<span class="lbl">${label}</span>${value ?? '—'}`;
-    const r = document.createElement('div');
-    if(tagClass){ r.innerHTML = `<span class="tag ${tagClass}">${tagClass.toUpperCase()}</span>`; }
-    div.appendChild(l); div.appendChild(r);
-    return div;
-  }
-
-  function pick(obj, keys){
-    for(const k of keys){
-      if(obj && obj[k] !== undefined && obj[k] !== null) return obj[k];
-    }
-    return undefined;
-  }
-
-  async function handleLive(){
-    const no = document.getElementById('live-no').value.trim();
-    const date = document.getElementById('live-date').value;
-    const resultEl = document.getElementById('live-result');
-    resultEl.innerHTML = '';
-    if(!no){ setStatus('live-status', 'Enter a train number.', true); return; }
-    setStatus('live-status', 'Checking live position…');
-    try{
-      const data = await callApi(ENDPOINTS.live(no, date));
-      const d = data.data || {};
-      setStatus('live-status', 'Live data received.');
-      const board = document.createElement('div');
-      board.className = 'result-board';
-      board.appendChild(row('Train', [d.trainNumber, d.trainName].filter(Boolean).join(' · ')));
-      board.appendChild(row('Status', d.status));
-      const delayVal = d.delayMinutes;
-      board.appendChild(row('Delay', delayVal !== undefined ? `${delayVal} min` : '—', delayVal > 0 ? 'red' : 'green'));
-      const cur = d.currentLocation || {};
-      board.appendChild(row('Current location', [cur.stationCode, cur.status].filter(Boolean).join(' · ')));
-      const next = d.nextHalt || {};
-      board.appendChild(row('Next halt', [next.stationCode, next.stationName].filter(Boolean).join(' — ')));
-      board.appendChild(row('Last updated', d.lastUpdatedAt));
-      resultEl.appendChild(board);
-      resultEl.appendChild(rawBlock(data));
-    }catch(e){
-      setStatus('live-status', e.message + ' — see raw response below.', true);
-      if(e.body) resultEl.appendChild(rawBlock(e.body));
-    }
-  }
-
-  async function handlePnr(){
-    const pnr = document.getElementById('pnr-no').value.trim();
-    const resultEl = document.getElementById('pnr-result');
-    resultEl.innerHTML = '';
-    if(!/^\d{10}$/.test(pnr)){ setStatus('pnr-status', 'Enter a valid 10-digit PNR.', true); return; }
-    setStatus('pnr-status', 'Checking PNR…');
-    try{
-      const data = await callApi(ENDPOINTS.pnr(pnr));
-      const d = data.data || {};
-      const train = d.train || {};
-      const journey = d.journey || {};
-      const charting = d.charting || {};
-      setStatus('pnr-status', 'PNR data received.');
-      const board = document.createElement('div');
-      board.className = 'result-board';
-      board.appendChild(row('Train', [train.number, train.name].filter(Boolean).join(' · ')));
-      board.appendChild(row('From → To', [train.source?.name, train.destination?.name].filter(Boolean).join(' → ')));
-      board.appendChild(row('Class / Quota', [journey.class, journey.quota].filter(Boolean).join(' / ')));
-      board.appendChild(row('Date of journey', journey.date));
-      board.appendChild(row('Chart status', charting.status));
-      resultEl.appendChild(board);
-      if(Array.isArray(d.passengers)){
-        const pboard = document.createElement('div');
-        pboard.className = 'result-board';
-        d.passengers.forEach((p) => {
-          pboard.appendChild(row(
-            `Passenger ${p.passengerNumber ?? ''}`,
-            [p.bookingStatus, '→', p.currentStatus, p.coach ? `(${p.coach}${p.berthNumber ? '/'+p.berthNumber : ''})` : ''].filter(Boolean).join(' '),
-            p.isConfirmed ? 'green' : (p.isWaitlisted ? 'amber' : undefined)
-          ));
-        });
-        resultEl.appendChild(pboard);
-      }
-      resultEl.appendChild(rawBlock(data));
-    }catch(e){
-      setStatus('pnr-status', e.message + ' — see raw response below.', true);
-      if(e.body) resultEl.appendChild(rawBlock(e.body));
-    }
-  }
-
-  async function handleTrain(){
-    const no = document.getElementById('train-no').value.trim();
-    const resultEl = document.getElementById('train-result');
-    resultEl.innerHTML = '';
-    if(!no){ setStatus('train-status', 'Enter a train number.', true); return; }
-    setStatus('train-status', 'Fetching train details…');
-    try{
-      const data = await callApi(ENDPOINTS.train(no));
-      const d = data.data || {};
-      const train = d.train || {};
-      setStatus('train-status', 'Train data received.');
-      const board = document.createElement('div');
-      board.className = 'result-board';
-      board.appendChild(row('Name', [train.number, train.name].filter(Boolean).join(' · ')));
-      board.appendChild(row('From → To', [train.source?.name, train.destination?.name].filter(Boolean).join(' → ')));
-      board.appendChild(row('Type / Category', [train.type, train.category].filter(Boolean).join(' / ')));
-      board.appendChild(row('Runs on', Array.isArray(train.runDays) ? train.runDays.join(', ') : undefined));
-      board.appendChild(row('Distance / Duration', [train.distance ? train.distance+' km' : null, train.duration ? Math.round(train.duration/60)+'h '+(train.duration%60)+'m' : null].filter(Boolean).join(' · ')));
-      resultEl.appendChild(board);
-      if(Array.isArray(d.route)){
-        const rboard = document.createElement('div');
-        rboard.className = 'result-board';
-        d.route.forEach(st => {
-          rboard.appendChild(row(st.station?.name || st.station?.code || 'Stop', [st.arrival, st.departure].filter(Boolean).join(' / ')));
-        });
-        resultEl.appendChild(rboard);
-      }
-      resultEl.appendChild(rawBlock(data));
-    }catch(e){
-      setStatus('train-status', e.message + ' — see raw response below.', true);
-      if(e.body) resultEl.appendChild(rawBlock(e.body));
-    }
-  }
-
-  async function handleBetween(){
-    const from = document.getElementById('from-code').value.trim().toUpperCase();
-    const to = document.getElementById('to-code').value.trim().toUpperCase();
-    const resultEl = document.getElementById('between-result');
-    resultEl.innerHTML = '';
-    if(!from || !to){ setStatus('between-status', 'Enter both station codes.', true); return; }
-    setStatus('between-status', 'Searching trains…');
-    try{
-      const data = await callApi(ENDPOINTS.between(from, to));
-      const d = data.data || {};
-      const list = d.trains || [];
-      setStatus('between-status', `${d.count ?? list.length} train(s) found.`);
-      const board = document.createElement('div');
-      board.className = 'result-board';
-      list.forEach(t => {
-        board.appendChild(row(
-          [t.train?.number, t.train?.name].filter(Boolean).join(' · '),
-          [t.from?.departure, t.to?.arrival].filter(Boolean).join(' → ')
-        ));
-      });
-      resultEl.appendChild(board);
-      resultEl.appendChild(rawBlock(data));
-    }catch(e){
-      setStatus('between-status', e.message + ' — see raw response below.', true);
-      if(e.body) resultEl.appendChild(rawBlock(e.body));
-    }
-  }
-
-  async function handlePredict(){
-    const pnr = document.getElementById('pnr-no').value.trim();
-    const resultEl = document.getElementById('predict-result');
-    resultEl.innerHTML = '';
-    if(!/^\d{10}$/.test(pnr)){ setStatus('predict-status', 'Enter a valid 10-digit PNR above first.', true); return; }
-    setStatus('predict-status', 'Calculating confirmation chances…');
-    try{
-      const data = await callApi(ENDPOINTS.predict(pnr));
-      const d = data.data || {};
-      setStatus('predict-status', d.header || 'Prediction received.');
-      const pct = Math.round((d.probability ?? 0) * 100);
-      const bar = document.createElement('div');
-      bar.className = 'prob-bar';
-      bar.innerHTML = `<div class="prob-bar-fill" style="width:${pct}%; background:${pct>=70?'var(--signal-green)':pct>=35?'var(--led-amber)':'var(--signal-red)'}"></div><div class="prob-bar-label">${pct}% confirmation probability</div>`;
-      resultEl.appendChild(bar);
-      resultEl.appendChild(rawBlock(data));
-    }catch(e){
-      setStatus('predict-status', e.message + ' — see raw response below.', true);
-      if(e.body) resultEl.appendChild(rawBlock(e.body));
-    }
-  }
-
-  function availabilityTag(status){
-    if(!status) return undefined;
-    const s = status.toUpperCase();
-    if(s.startsWith('AVAILABLE')) return 'green';
-    if(s.startsWith('RAC')) return 'amber';
-    return 'red'; // WL, GNWL, REGRET, NOT AVAILABLE, etc.
-  }
-
-  async function handleSeats(){
-    const no = document.getElementById('seats-no').value.trim();
-    const params = {
-      source: document.getElementById('seats-from').value.trim().toUpperCase(),
-      destination: document.getElementById('seats-to').value.trim().toUpperCase(),
-      journeyDate: document.getElementById('seats-date').value,
-      classCode: document.getElementById('seats-class').value,
-      quotaCode: document.getElementById('seats-quota').value,
-    };
-    const resultEl = document.getElementById('seats-result');
-    resultEl.innerHTML = '';
-    if(!no || !params.source || !params.destination || !params.journeyDate){
-      setStatus('seats-status', 'Fill in train number, from, to and date.', true); return;
-    }
-    setStatus('seats-status', 'Checking 14-day availability…');
-    try{
-      const data = await callApi(ENDPOINTS.seats(no, params));
-      const d = data.data || {};
-      setStatus('seats-status', `${d.trainName || no} · ${d.classCode}/${d.quotaCode}`);
-      const board = document.createElement('div');
-      board.className = 'result-board';
-      (d.avlDayList || []).forEach(day => {
-        board.appendChild(row(day.availablityDate, day.availablityStatus, availabilityTag(day.availablityStatus)));
-      });
-      resultEl.appendChild(board);
-      resultEl.appendChild(rawBlock(data));
-    }catch(e){
-      setStatus('seats-status', e.message + ' — see raw response below.', true);
-      if(e.body) resultEl.appendChild(rawBlock(e.body));
-    }
-  }
-
-  async function handleFare(){
-    const no = document.getElementById('fare-no').value.trim();
-    const params = {
-      source: document.getElementById('fare-from').value.trim().toUpperCase(),
-      destination: document.getElementById('fare-to').value.trim().toUpperCase(),
-      journeyDate: document.getElementById('fare-date').value,
-      classCode: document.getElementById('fare-class').value,
-      quotaCode: document.getElementById('fare-quota').value,
-    };
-    const resultEl = document.getElementById('fare-result');
-    resultEl.innerHTML = '';
-    if(!no || !params.source || !params.destination || !params.journeyDate){
-      setStatus('fare-status', 'Fill in train number, from, to and date.', true); return;
-    }
-    setStatus('fare-status', 'Calculating fare…');
-    try{
-      const data = await callApi(ENDPOINTS.fare(no, params));
-      const d = data.data || {};
-      const b = d.breakdown || {};
-      setStatus('fare-status', `${d.trainName || no} · ${d.classCode}/${d.quotaCode}`);
-      const board = document.createElement('div');
-      board.className = 'result-board';
-      board.appendChild(row('Base fare', b.baseFare));
-      board.appendChild(row('Reservation charge', b.reservationCharge));
-      board.appendChild(row('Superfast charge', b.superfastCharge));
-      board.appendChild(row('Tatkal fare', b.tatkalFare));
-      board.appendChild(row('GST', b.goodsServiceTax));
-      board.appendChild(row('Catering charge', b.cateringCharge));
-      board.appendChild(row('Dynamic fare', b.dynamicFare));
-      board.appendChild(row('Total fare', d.totalFare ? `₹${d.totalFare}` : undefined, 'green'));
-      resultEl.appendChild(board);
-      resultEl.appendChild(rawBlock(data));
-    }catch(e){
-      setStatus('fare-status', e.message + ' — see raw response below.', true);
-      if(e.body) resultEl.appendChild(rawBlock(e.body));
-    }
-  }
-
-  async function handleBoard(){
-    const code = document.getElementById('board-code').value.trim().toUpperCase();
-    const hours = document.getElementById('board-hours').value;
-    const resultEl = document.getElementById('board-result');
-    resultEl.innerHTML = '';
-    if(!code){ setStatus('board-status', 'Enter a station code.', true); return; }
-    setStatus('board-status', 'Loading live board…');
-    try{
-      const data = await callApi(ENDPOINTS.board(code, { hours }));
-      const d = data.data || {};
-      setStatus('board-status', `${d.station?.name || code} · window ${d.window?.from ?? ''}–${d.window?.to ?? ''}`);
-      const board = document.createElement('div');
-      board.className = 'result-board';
-      (d.trains || []).forEach(t => {
-        const live = t.live || {};
-        board.appendChild(row(
-          [t.train?.number, t.train?.name].filter(Boolean).join(' · '),
-          [t.stop?.departure || t.stop?.arrival, live.platform ? `PF ${live.platform}` : null, live.delayMinutes ? `+${live.delayMinutes}m` : null].filter(Boolean).join(' · '),
-          live.type === 'at-station' ? 'green' : (live.delayMinutes > 0 ? 'red' : undefined)
-        ));
-      });
-      resultEl.appendChild(board);
-      resultEl.appendChild(rawBlock(data));
-    }catch(e){
-      setStatus('board-status', e.message + ' — see raw response below.', true);
-      if(e.body) resultEl.appendChild(rawBlock(e.body));
-    }
-  }
-
-  async function handleSearch(){
-    const q = document.getElementById('search-q').value.trim();
-    const kind = document.getElementById('search-type').value;
-    const resultEl = document.getElementById('search-result');
-    resultEl.innerHTML = '';
-    if(!q){ setStatus('search-status', 'Type something to search for.', true); return; }
-    setStatus('search-status', 'Searching…');
-    try{
-      const data = await callApi(ENDPOINTS.search(kind, q));
-      const list = data.data || [];
-      setStatus('search-status', `${list.length} result(s).`);
-      const board = document.createElement('div');
-      board.className = 'result-board';
-      list.forEach(item => {
-        if(kind === 'stations'){
-          board.appendChild(row(`${item.code} — ${item.name}`, item.city));
-        } else {
-          board.appendChild(row(`${item.number} — ${item.name}`, [item.source, item.destination].filter(Boolean).join(' → ')));
-        }
-      });
-      resultEl.appendChild(board);
-      resultEl.appendChild(rawBlock(data));
-    }catch(e){
-      setStatus('search-status', e.message + ' — see raw response below.', true);
-      if(e.body) resultEl.appendChild(rawBlock(e.body));
-    }
-  }
-
-  document.querySelectorAll('[data-action]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      btn.disabled = true;
-      const map = { live:handleLive, pnr:handlePnr, predict:handlePredict, train:handleTrain, between:handleBetween, seats:handleSeats, fare:handleFare, board:handleBoard, search:handleSearch };
-      map[btn.dataset.action]().finally(() => { btn.disabled = false; });
-    });
-  });
-</script>
-
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-
+<div class="ov" id="authOv" role="dialog" aria-modal="true"><div class="box">
+  <button class="x" id="authX" aria-label="Close">&times;</button>
+  <h2 id="aT">Welcome aboard</h2><p class="sub" id="aS">Sign in to your railway dashboard.</p>
+  <div class="tabs"><button class="on" data-m="login">Log in</button><button data-m="signup">Sign up</button></div>
+  <form id="authForm">
+    <div class="fl" id="nameF" hidden><label for="aN">Your name</label><input id="aN" maxlength="80" autocomplete="name"></div>
+    <div class="fl"><label for="aE">Email</label><input id="aE" type="email" required autocomplete="email"></div>
+    <div class="fl"><label for="aP">Password</label><input id="aP" type="password" minlength="6" required></div>
+    <div class="fl" id="avF" hidden><label for="aA">Profile photo URL (optional)</label><input id="aA" type="url" placeholder="https://"></div>
+    <div class="msg" id="aM" role="status"></div>
+    <button class="go" id="aB" style="width:100%">Log in</button>
+  </form></div></div>
+<div class="ov" id="profOv" role="dialog" aria-modal="true"><div class="box">
+  <button class="x" id="profX" aria-label="Close">&times;</button>
+  <h2>Your profile</h2><p class="sub" id="pE"></p>
+  <form id="profForm">
+    <div class="fl"><label for="pN">Display name</label><input id="pN" maxlength="80" required></div>
+    <div class="fl"><label for="pA">Profile photo URL (optional)</label><input id="pA" type="url"></div>
+    <div class="msg" id="pM" role="status"></div>
+    <button class="go" style="width:100%">Save profile</button>
+  </form>
+  <button class="btn" id="logout" style="width:100%;margin-top:10px">Log out</button></div></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-(() => {
-  // Set these in this file to your Supabase project's public URL and publishable/anon key.
-  // Never put a Supabase service_role/secret key in browser code.
-  const SUPABASE_URL = 'https://qldfwmewajhejvhadjkg.supabase.co';
-  const SUPABASE_ANON_KEY = 'sb_publishable_IdwWrZqw5G0RBOeh3jHLng_MODhkcaq';
-  const configured = SUPABASE_URL.startsWith('https://') && !SUPABASE_URL.includes('PASTE_') && !SUPABASE_ANON_KEY.includes('PASTE_');
-  const $ = id => document.getElementById(id);
-  const authOverlay = $('authOverlay'), profileOverlay = $('profileOverlay');
-  let authMode = 'login', supabaseClient = null, currentUser = null, currentProfile = null;
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const today=new Date().toISOString().slice(0,10);
+const tag=(t,c)=>`<span class="tag ${c}">${esc(t)}</span>`;
+const kv=r=>`<dl class="kv">${r.filter(x=>x[1]!==undefined&&x[1]!==null&&x[1]!=='').map(x=>`<div><dt>${esc(x[0])}</dt><dd>${esc(x[1])}</dd></div>`).join('')}</dl>`;
+const table=(h,rows)=>rows.length?`<div class="tw"><table><thead><tr>${h.map(x=>`<th>${x}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`:'<p class="st">Nothing found. Check the input and try again.</p>';
+const join=(a,s=' · ')=>a.filter(Boolean).join(s);
+const avTag=s=>{s=(s||'').toUpperCase();return tag(s||'—',s.startsWith('AVAILABLE')?'green':s.startsWith('RAC')?'amber':'red')};
 
-  function setTheme(theme) {
-    document.body.dataset.theme = theme;
-    localStorage.setItem('rail-board-theme', theme);
-    $('themeToggle').textContent = theme === 'dark' ? '☀️ Light mode' : '🌙 Dark mode';
-  }
-  setTheme(localStorage.getItem('rail-board-theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
-  $('themeToggle').addEventListener('click', () => setTheme(document.body.dataset.theme === 'dark' ? 'light' : 'dark'));
+const CLS=['SL:Sleeper','3A:AC 3-Tier','2A:AC 2-Tier','1A:AC First','3E:AC 3-Economy','CC:Chair Car','2S:Second Sitting'];
+const QUO=['GN:General','TQ:Tatkal','PT:Premium Tatkal','LD:Ladies','SS:Senior citizen'];
+const trip=[{k:'no',l:'Train number',p:'12952',max:5},{k:'source',l:'From (code)',p:'NDLS',up:1},{k:'destination',l:'To (code)',p:'MMCT',up:1},{k:'journeyDate',l:'Journey date',t:'date',def:today},{k:'classCode',l:'Class',o:CLS,def:'3A'},{k:'quotaCode',l:'Quota',o:QUO,def:'GN'}];
+const qs=o=>new URLSearchParams(o).toString();
 
-  function showMessage(id, message, error=false) { const el=$(id); el.textContent=message; el.classList.toggle('error',error); }
-  function openOverlay(el) { el.classList.add('open'); }
-  function closeOverlay(el) { el.classList.remove('open'); }
-  $('authOpen').addEventListener('click', () => { if(!configured){showMessage('authMessage','Set up Supabase URL and publishable key in index.html first.',true); } openOverlay(authOverlay); });
-  $('authClose').addEventListener('click',()=>closeOverlay(authOverlay));
-  $('profileOpen').addEventListener('click',()=>openOverlay(profileOverlay));
-  $('profileClose').addEventListener('click',()=>closeOverlay(profileOverlay));
-  [authOverlay,profileOverlay].forEach(overlay=>overlay.addEventListener('click',e=>{if(e.target===overlay)closeOverlay(overlay)}));
-  document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeOverlay(authOverlay);closeOverlay(profileOverlay)}});
+const TOOLS=[
+{id:'live',g:'Trains',n:'Live status',d:'Current position and delay of a running train.',auto:1,
+ f:[{k:'no',l:'Train number',p:'12951',max:5},{k:'date',l:'Journey date',t:'date',def:today,opt:1}],
+ url:v=>`/trains/${v.no}/live`+(v.date?`?date=${v.date}`:''),
+ view:d=>{const dl=d.delayMinutes,c=d.currentLocation||{},n=d.nextHalt||{};
+  return `<div class="hero"><b>${esc(join([d.trainNumber,d.trainName]))}</b>${dl>0?tag(dl+' min late','red'):dl===0?tag('On time','green'):''}</div>`+
+  kv([['Status',d.status],['Current location',join([c.stationCode,c.status])],['Next halt',join([n.stationCode,n.stationName],' — ')],['Last updated',d.lastUpdatedAt]])}},
+{id:'train',g:'Trains',n:'Train info',d:'Route, stops and schedule for any train.',
+ f:[{k:'no',l:'Train number',p:'12301',max:5}],url:v=>`/trains/${v.no}?haltsOnly=true`,
+ view:d=>{const t=d.train||{},h=t.duration;
+  return `<div class="hero"><b>${esc(join([t.number,t.name]))}</b></div>`+kv([['Route',join([t.source?.name,t.destination?.name],' → ')],['Type',join([t.type,t.category],' / ')],['Runs on',(t.runDays||[]).join(', ')],['Distance',t.distance?t.distance+' km':''],['Duration',h?`${Math.floor(h/60)}h ${h%60}m`:'']])+
+  table(['Station','Arrival','Departure'],(d.route||[]).map(s=>[esc(s.station?.name||s.station?.code),esc(s.arrival||'—'),esc(s.departure||'—')]))}},
+{id:'between',g:'Trains',n:'Between stations',d:'Find trains running between two stations.',
+ f:[{k:'from',l:'From (code)',p:'NDLS',up:1},{k:'to',l:'To (code)',p:'BCT',up:1}],url:v=>`/trains/between/${v.from}/${v.to}`,
+ view:d=>table(['Train','Departs','Arrives'],(d.trains||[]).map(t=>[esc(join([t.train?.number,t.train?.name])),esc(t.from?.departure||'—'),esc(t.to?.arrival||'—')]))},
+{id:'seats',g:'Trains',n:'Seat availability',d:'14-day availability forecast by class and quota.',f:trip,
+ url:v=>`/trains/${v.no}/seats?`+qs({source:v.source,destination:v.destination,journeyDate:v.journeyDate,classCode:v.classCode,quotaCode:v.quotaCode}),
+ view:d=>`<div class="hero"><b>${esc(d.trainName)}</b>${tag(join([d.classCode,d.quotaCode],' / '),'amber')}</div>`+table(['Date','Status'],(d.avlDayList||[]).map(x=>[esc(x.availablityDate),avTag(x.availablityStatus)]))},
+{id:'fare',g:'Trains',n:'Fare calculator',d:'Itemized ticket price with all charges.',f:trip,
+ url:v=>`/trains/${v.no}/fare?`+qs({source:v.source,destination:v.destination,journeyDate:v.journeyDate,classCode:v.classCode,quotaCode:v.quotaCode}),
+ view:d=>{const b=d.breakdown||{},m=x=>x?'₹'+x:'';
+  return `<div class="hero"><b>${esc(d.trainName)}</b>${tag('Total ₹'+(d.totalFare??'—'),'green')}</div>`+kv([['Base fare',m(b.baseFare)],['Reservation charge',m(b.reservationCharge)],['Superfast charge',m(b.superfastCharge)],['Tatkal fare',m(b.tatkalFare)],['GST',m(b.goodsServiceTax)],['Catering',m(b.cateringCharge)],['Dynamic fare',m(b.dynamicFare)]])}},
+{id:'pnr',g:'Booking',n:'PNR status',d:'Booking and seat confirmation for a 10-digit PNR.',
+ f:[{k:'pnr',l:'PNR number',p:'10 digits',max:10}],check:v=>/^\d{10}$/.test(v.pnr)?'':'PNR must be exactly 10 digits.',url:v=>`/pnr/${v.pnr}`,
+ view:d=>{const t=d.train||{},j=d.journey||{},p=d.passengers||[];
+  return `<div class="hero"><b>${esc(join([t.number,t.name]))}</b>${tag(d.charting?.status||'Chart status unknown','amber')}</div>`+
+  kv([['Route',join([t.source?.name,t.destination?.name],' → ')],['Class / Quota',join([j.class,j.quota],' / ')],['Journey date',j.date]])+
+  table(['Passenger','Booked','Current','Seat'],p.map(x=>[esc(x.passengerNumber),esc(x.bookingStatus),tag(x.currentStatus||'—',x.isConfirmed?'green':x.isWaitlisted?'amber':'red'),esc(join([x.coach,x.berthNumber],' / ')||'—')]))+
+  `<p class="opts"><button class="btn" id="predBtn" type="button">Check confirmation chances</button></p><div id="predOut"></div>`},
+ after:v=>{$('predBtn')?.addEventListener('click',async()=>{const o=$('predOut');o.innerHTML='<div class="skel"></div>';
+  try{const r=await api(`/pnr/${v.pnr}/prediction`),p=Math.round((r.data?.probability??0)*100),c=p>=70?'var(--green)':p>=35?'var(--amber)':'var(--red)';
+   o.innerHTML=`<div class="bar"><i style="width:${p}%;background:${c}"></i><span>${p}% chance of confirmation</span></div>`}catch(e){o.innerHTML=`<p class="st err">${esc(e.message)}</p>`}})}},
+{id:'board',g:'Stations',n:'Station board',d:'Live arrivals and departures at a station.',
+ f:[{k:'code',l:'Station code',p:'NDLS',up:1},{k:'hours',l:'Look ahead',o:['2:2 hours','4:4 hours','6:6 hours','8:8 hours'],def:'4'}],url:v=>`/stations/${v.code}/live?hours=${v.hours}`,
+ view:d=>`<div class="hero"><b>${esc(d.station?.name||'')}</b></div>`+table(['Train','Time','Platform','Delay'],(d.trains||[]).map(t=>{const l=t.live||{};return [esc(join([t.train?.number,t.train?.name])),esc(t.stop?.departure||t.stop?.arrival||'—'),esc(l.platform||'—'),l.delayMinutes?tag('+'+l.delayMinutes+' min','red'):tag('On time','green')]}))},
+{id:'search',g:'Stations',n:'Quick search',d:'Find a station code or a train number.',
+ f:[{k:'q',l:'Search',p:'Delhi, Shatabdi, 12951'},{k:'kind',l:'Looking for',o:['stations:Stations','trains:Trains'],def:'stations'}],url:v=>`/lookup/search/${v.kind}?q=${encodeURIComponent(v.q)}&limit=20`,
+ view:(d,v)=>v.kind==='stations'?table(['Code','Station','City'],(d||[]).map(i=>[esc(i.code),esc(i.name),esc(i.city||'—')])):table(['Number','Train','Route'],(d||[]).map(i=>[esc(i.number),esc(i.name),esc(join([i.source,i.destination],' → '))]))}
+];
 
-  function setAuthMode(mode) {
-    authMode=mode;
-    document.querySelectorAll('[data-auth-mode]').forEach(b=>b.classList.toggle('active',b.dataset.authMode===mode));
-    $('nameField').hidden=mode!=='signup'; $('avatarField').hidden=mode!=='signup';
-    $('authTitle').textContent=mode==='signup'?'Create your account':'Welcome aboard';
-    $('authSubtitle').textContent=mode==='signup'?'Create a profile for your railway dashboard.':'Sign in to your railway dashboard.';
-    $('authSubmit').textContent=mode==='signup'?'Create account':'Log in';
-    $('authPassword').autocomplete=mode==='signup'?'new-password':'current-password';
-    showMessage('authMessage','');
-  }
-  document.querySelectorAll('[data-auth-mode]').forEach(b=>b.addEventListener('click',()=>setAuthMode(b.dataset.authMode)));
-
-  function renderUser(user,profile) {
-    currentUser=user; currentProfile=profile;
-    $('authOpen').hidden=!!user; $('profileOpen').hidden=!user;
-    if(!user)return;
-    const name=profile?.display_name || user.user_metadata?.display_name || user.email?.split('@')[0] || 'User';
-    $('navName').textContent=name; $('navAvatar').textContent=name.charAt(0).toUpperCase();
-    $('navAvatar').innerHTML=profile?.avatar_url ? '<img alt="Profile photo">' : name.charAt(0).toUpperCase();
-    const avatarImg=$('navAvatar').querySelector('img'); if(avatarImg) avatarImg.src=profile.avatar_url;
-    $('profileName').value=name; $('profileEmail').textContent=user.email || '';
-    $('profileAvatar').value=profile?.avatar_url || '';
-  }
-  async function loadProfile(user) {
-    const {data,error}=await supabaseClient.from('profiles').select('id,display_name,avatar_url,created_at').eq('id',user.id).maybeSingle();
-    if(error){console.error('Profile load error:',error.message);renderUser(user,null);return;}
-    let profile=data;
-    if(!profile){
-      const display_name=user.user_metadata?.display_name || user.email?.split('@')[0] || 'User';
-      const result=await supabaseClient.from('profiles').upsert({id:user.id,display_name,avatar_url:user.user_metadata?.avatar_url || null}).select().single();
-      if(result.error) console.error('Profile create error:',result.error.message); else profile=result.data;
-    }
-    renderUser(user,profile);
-  }
- 
-// Initialize Supabase
-
-
-if (configured && window.supabase?.createClient) {
-  supabaseClient = window.supabase.createClient(
-    SUPABASE_URL,
-    SUPABASE_ANON_KEY,
-    {
-      auth: {
-        autoRefreshToken: true,
-        persistSession: true,
-        detectSessionInUrl: true
-      },
-      global: {
-        headers: {
-          "X-Client-Info": "railway-live-status"
-        }
-      }
-    }
-  );
-
-  // Check existing login session
-  supabaseClient.auth.getSession()
-    .then(({ data, error }) => {
-      if (error) {
-        console.error("Session error:", error.message);
-        renderUser(null, null);
-        return;
-      }
-
-      if (data?.session?.user) {
-        loadProfile(data.session.user);
-      } else {
-        renderUser(null, null);
-      }
-    })
-    .catch(error => {
-      console.error("Session check failed:", error);
-      renderUser(null, null);
-    });
-
-  // Listen for login and logout changes
-  supabaseClient.auth.onAuthStateChange((event, session) => {
-    if (session?.user) {
-      setTimeout(() => {
-        loadProfile(session.user);
-      }, 0);
-    } else {
-      renderUser(null, null);
-    }
-  });
-
-} else {
-  console.warn(
-    "Supabase is not configured. Check the project URL, publishable key, and Supabase CDN."
-  );
+async function api(path){
+  const res=await fetch('/api/v1'+path,{headers:{Accept:'application/json'}});
+  const text=await res.text();let b;try{b=JSON.parse(text)}catch(e){b=null}
+  if(!res.ok||!b||b.success===false)throw new Error(b?.error?.message||`Request failed (HTTP ${res.status}).`);
+  return b;
 }
 
-  $('authForm').addEventListener('submit',async e=>{
-    e.preventDefault();
-    if(!configured||!supabaseClient){showMessage('authMessage','Pehle Supabase URL aur publishable key configure karo.',true);return;}
-    const email=$('authEmail').value.trim(), password=$('authPassword').value;
-    $('authSubmit').disabled=true; showMessage('authMessage',authMode==='signup'?'Creating account…':'Logging in…');
-    try {
-      let result;
-      if(authMode==='signup') {
-        result=await supabaseClient.auth.signUp({email,password,options:{data:{display_name:$('authName').value.trim(),avatar_url:$('authAvatar').value.trim()||null}}});
-        if(!result.error && !result.data.session) showMessage('authMessage','Account created. Email confirmation enabled hai to inbox check karo.');
-      } else result=await supabaseClient.auth.signInWithPassword({email,password});
-      if(result.error) showMessage('authMessage',result.error.message,true);
-      else if(authMode==='login' && result.data.session){showMessage('authMessage','Login successful.');setTimeout(()=>closeOverlay(authOverlay),400);}
-      else if(authMode==='signup' && result.data.session){showMessage('authMessage','Account created successfully.');setTimeout(()=>closeOverlay(authOverlay),500);}
-    } catch(err){showMessage('authMessage',err.message||'Something went wrong.',true)}
-    finally{$('authSubmit').disabled=false;}
-  });
-  $('profileForm').addEventListener('submit',async e=>{
-    e.preventDefault(); if(!supabaseClient||!currentUser){showMessage('profileMessage','Please log in first.',true);return;}
-    const display_name=$('profileName').value.trim(), avatar_url=$('profileAvatar').value.trim()||null;
-    if(!display_name){showMessage('profileMessage','Name cannot be empty.',true);return;}
-    const {data,error}=await supabaseClient.from('profiles').upsert({id:currentUser.id,display_name,avatar_url}).select().single();
-    if(error)showMessage('profileMessage',error.message,true);else{renderUser(currentUser,data);showMessage('profileMessage','Profile saved successfully.');}
-  });
-  $('logoutBtn').addEventListener('click',async()=>{if(!supabaseClient)return;const {error}=await supabaseClient.auth.signOut();if(error)showMessage('profileMessage',error.message,true);else{closeOverlay(profileOverlay);openOverlay(authOverlay);setAuthMode('login');showMessage('authMessage','You have logged out.');}});
-})();
-</script>
+// ----- build sidebar + panels -----
+const side=$('side'),panels=$('panels');
+side.insertAdjacentHTML('beforeend',`<button class="nav on" data-t="home">Overview</button>`);
+let lastG='';
+TOOLS.forEach(t=>{
+  if(t.g!==lastG){side.insertAdjacentHTML('beforeend',`<div class="grp">${t.g}</div>`);lastG=t.g}
+  side.insertAdjacentHTML('beforeend',`<button class="nav" data-t="${t.id}">${t.n}</button>`);
+  const fields=t.f.map(f=>`<div class="fl"><label for="${t.id}-${f.k}">${f.l}</label>`+(f.o?`<select id="${t.id}-${f.k}">${f.o.map(o=>{const[a,b]=o.split(':');return `<option value="${a}"${a===f.def?' selected':''}>${b}</option>`}).join('')}</select>`:`<input id="${t.id}-${f.k}" ${f.t?`type="${f.t}"`:''} value="${f.def||''}" placeholder="${f.p||''}" ${f.max?`maxlength="${f.max}"`:''} ${f.up?'style="text-transform:uppercase"':''} ${f.max&&f.max<=10?'inputmode="numeric"':''} autocomplete="off">`)+`</div>`).join('');
+  panels.insertAdjacentHTML('beforeend',`<section class="panel" id="p-${t.id}"><div class="card"><h2>${t.n}</h2><p class="d">${t.d}</p><form class="f" id="f-${t.id}">${fields}<button class="go">Search</button></form>${t.auto?`<label class="opts"><input type="checkbox" id="auto-${t.id}"> Refresh every 60 seconds</label>`:''}<div class="st" id="st-${t.id}"></div><div id="out-${t.id}"></div></div></section>`);
+  $('f-'+t.id).addEventListener('submit',e=>{e.preventDefault();run(t)});
+});
+const vals=t=>Object.fromEntries(t.f.map(f=>{let v=$(`${t.id}-${f.k}`).value.trim();if(f.up)v=v.toUpperCase();return[f.k,v]}));
+let timer;
+async function run(t,v=vals(t)){
+  const st=$('st-'+t.id),out=$('out-'+t.id),btn=$('f-'+t.id).querySelector('.go');
+  const miss=t.f.find(f=>!f.opt&&!v[f.k]);
+  const err=miss?`Enter ${miss.l.toLowerCase()}.`:(t.check?t.check(v):'');
+  if(err){st.textContent=err;st.className='st err';return}
+  st.className='st';st.textContent='Loading…';if(!out.children.length)out.innerHTML='<div class="skel"></div>';btn.disabled=true;
+  try{
+    const r=await api(t.url(v));
+    out.innerHTML=t.view(r.data,v)+`<details class="raw"><summary>Show raw data</summary><pre>${esc(JSON.stringify(r,null,2))}</pre></details>`;
+    st.textContent='Updated '+new Date().toLocaleTimeString('en-IN');
+    remember(t,v);t.after&&t.after(v);
+  }catch(e){out.innerHTML='';st.textContent=e.message+' Check your input and try again.';st.className='st err'}
+  finally{btn.disabled=false}
+}
+function open_(id,v){
+  document.querySelectorAll('.nav').forEach(b=>b.classList.toggle('on',b.dataset.t===id));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('on',p.id==='p-'+id));
+  const t=TOOLS.find(x=>x.id===id);$('title').textContent=t?t.n:'Overview';
+  clearInterval(timer);
+  if(t&&v){Object.entries(v).forEach(([k,x])=>{const el=$(`${id}-${k}`);if(el)el.value=x});run(t,v)}
+}
+side.addEventListener('click',e=>{const b=e.target.closest('.nav');if(b)open_(b.dataset.t)});
+TOOLS.filter(t=>t.auto).forEach(t=>$('auto-'+t.id).addEventListener('change',e=>{clearInterval(timer);if(e.target.checked)timer=setInterval(()=>run(t),60000)}));
 
+// ----- overview -----
+$('qLive').addEventListener('submit',e=>{e.preventDefault();open_('live',{no:$('qL').value.trim(),date:today})});
+$('qPnr').addEventListener('submit',e=>{e.preventDefault();open_('pnr',{pnr:$('qP').value.trim()})});
+function remember(t,v){
+  let r=[];try{r=JSON.parse(localStorage.getItem('rb-recent')||'[]')}catch(e){}
+  const key=t.id+JSON.stringify(v);r=r.filter(x=>x.key!==key);r.unshift({key,t:t.id,v});
+  try{localStorage.setItem('rb-recent',JSON.stringify(r.slice(0,8)))}catch(e){}drawRecent();
+}
+function drawRecent(){
+  let r=[];try{r=JSON.parse(localStorage.getItem('rb-recent')||'[]')}catch(e){}
+  $('recent').innerHTML=r.length?r.map((x,i)=>{const t=TOOLS.find(y=>y.id===x.t);return t?`<button class="chip" data-i="${i}">${esc(t.n+': '+Object.values(x.v).filter(Boolean).slice(0,3).join(' '))}</button>`:''}).join(''):'<span class="st">Your searches will show up here.</span>';
+}
+$('recent').addEventListener('click',e=>{const b=e.target.closest('.chip');if(!b)return;const r=JSON.parse(localStorage.getItem('rb-recent')||'[]')[b.dataset.i];if(r)open_(r.t,r.v)});
+drawRecent();
+(function tick(){const n=new Date();$('clk').textContent=n.toLocaleTimeString('en-IN',{hour12:false});$('dt').textContent=n.toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'});setTimeout(tick,1000)})();
+
+// ----- theme -----
+function setTheme(t){document.body.dataset.theme=t;try{localStorage.setItem('rail-board-theme',t)}catch(e){}$('themeBtn').textContent=t==='dark'?'Light mode':'Dark mode'}
+setTheme((()=>{try{return localStorage.getItem('rail-board-theme')}catch(e){}})()||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'));
+$('themeBtn').addEventListener('click',()=>setTheme(document.body.dataset.theme==='dark'?'light':'dark'));
+
+// ----- Supabase login (same project as before) -----
+const SUPABASE_URL='https://qldfwmewajhejvhadjkg.supabase.co';
+const SUPABASE_ANON_KEY='sb_publishable_IdwWrZqw5G0RBOeh3jHLng_MODhkcaq'; // public key. Never put a service_role key here.
+let sb=null,user=null,mode='login';
+const msg=(id,t,e)=>{$(id).textContent=t;$(id).classList.toggle('err',!!e)};
+const ov=(el,o)=>el.classList.toggle('open',o);
+$('authOpen').onclick=()=>ov($('authOv'),1);$('authX').onclick=()=>ov($('authOv'),0);
+$('profileOpen').onclick=()=>ov($('profOv'),1);$('profX').onclick=()=>ov($('profOv'),0);
+[$('authOv'),$('profOv')].forEach(o=>o.addEventListener('click',e=>{if(e.target===o)ov(o,0)}));
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){ov($('authOv'),0);ov($('profOv'),0)}});
+document.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{mode=b.dataset.m;document.querySelectorAll('[data-m]').forEach(x=>x.classList.toggle('on',x===b));
+  $('nameF').hidden=$('avF').hidden=mode!=='signup';$('aT').textContent=mode==='signup'?'Create your account':'Welcome aboard';$('aB').textContent=mode==='signup'?'Create account':'Log in';msg('aM','')});
+function showUser(u,p){
+  user=u;$('authOpen').hidden=!!u;$('profileOpen').hidden=!u;if(!u){$('hi').textContent='Track a train, check a PNR or find seats. All in one place.';return}
+  const name=p?.display_name||u.user_metadata?.display_name||u.email?.split('@')[0]||'User';
+  $('navName').textContent=name;$('navAvatar').textContent=name[0].toUpperCase();
+  if(p?.avatar_url){const i=document.createElement('img');i.alt='';i.src=p.avatar_url;$('navAvatar').textContent='';$('navAvatar').appendChild(i)}
+  $('pN').value=name;$('pA').value=p?.avatar_url||'';$('pE').textContent=u.email||'';$('hi').textContent=`Welcome back, ${name}. Where to today?`;
+}
+async function loadProfile(u){
+  const{data,error}=await sb.from('profiles').select('id,display_name,avatar_url').eq('id',u.id).maybeSingle();
+  if(error){console.error(error.message);showUser(u,null);return}
+  let p=data;
+  if(!p){const r=await sb.from('profiles').upsert({id:u.id,display_name:u.user_metadata?.display_name||u.email?.split('@')[0]||'User',avatar_url:u.user_metadata?.avatar_url||null}).select().single();if(!r.error)p=r.data}
+  showUser(u,p);
+}
+if(window.supabase?.createClient){
+  sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY,{auth:{autoRefreshToken:true,persistSession:true,detectSessionInUrl:true}});
+  sb.auth.getSession().then(({data})=>data?.session?.user?loadProfile(data.session.user):showUser(null)).catch(()=>showUser(null));
+  sb.auth.onAuthStateChange((_e,s)=>{s?.user?setTimeout(()=>loadProfile(s.user),0):showUser(null)});
+}else console.warn('Supabase script did not load. Check your internet connection.');
+$('authForm').addEventListener('submit',async e=>{
+  e.preventDefault();if(!sb){msg('aM','Login service did not load. Check your internet and refresh.',1);return}
+  const email=$('aE').value.trim(),password=$('aP').value;$('aB').disabled=true;msg('aM',mode==='signup'?'Creating account…':'Logging in…');
+  try{
+    const r=mode==='signup'?await sb.auth.signUp({email,password,options:{data:{display_name:$('aN').value.trim(),avatar_url:$('aA').value.trim()||null}}}):await sb.auth.signInWithPassword({email,password});
+    if(r.error)msg('aM',r.error.message,1);
+    else if(r.data.session){msg('aM','Done.');setTimeout(()=>ov($('authOv'),0),400)}
+    else msg('aM','Account created. Check your inbox to confirm your email.');
+  }catch(err){msg('aM',err.message||'Something went wrong.',1)}finally{$('aB').disabled=false}
+});
+$('profForm').addEventListener('submit',async e=>{
+  e.preventDefault();if(!sb||!user){msg('pM','Please log in first.',1);return}
+  const display_name=$('pN').value.trim(),avatar_url=$('pA').value.trim()||null;
+  const{data,error}=await sb.from('profiles').upsert({id:user.id,display_name,avatar_url}).select().single();
+  error?msg('pM',error.message,1):(showUser(user,data),msg('pM','Profile saved.'));
+});
+$('logout').onclick=async()=>{if(!sb)return;const{error}=await sb.auth.signOut();if(error)msg('pM',error.message,1);else{ov($('profOv'),0);ov($('authOv'),1)}};
+</script>
 </body>
 </html>
