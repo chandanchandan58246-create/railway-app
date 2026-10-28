@@ -7,6 +7,54 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
+
+
+  
+/* ===== RAIL BOARD — BUTTERY SMOOTH SCROLL ===== */
+
+html {
+  scroll-behavior: smooth !important;
+  scroll-padding-top: 85px;
+}
+
+body {
+  overscroll-behavior-y: none;
+}
+
+/* Smooth scrolling for dashboard containers */
+main,
+#main,
+#content,
+.content,
+.main-content,
+.page-content {
+  scroll-behavior: smooth !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Keep animated glow from interfering with mouse events */
+#side::before {
+  pointer-events: none;
+}
+
+/* Smooth navigation links */
+a[href^="#"] {
+  scroll-behavior: smooth;
+}
+
+/* Prevent unwanted animation during reduced-motion preference */
+@media (prefers-reduced-motion: reduce) {
+  html,
+  main,
+  #main,
+  #content,
+  .content,
+  .main-content,
+  .page-content {
+    scroll-behavior: auto !important;
+  }
+}
+
   
 
 /* ===== RAIL BOARD — EXTRA SMOOTH EFFECTS ===== */
@@ -1162,7 +1210,452 @@ footer {
 
 
 
-</style>
+:root {
+  --side: rgba(14, 19, 38, .78);
+  --amber: #ffb84d;
+  --red: #ff5d78;
+  --green: #3fe0a0;
+  --bg: #eaf0fc;
+  --card: rgba(255, 255, 255, .62);
+  --ink: #141c33;
+  --soft: #66718b;
+  --rule: rgba(110, 135, 190, .22);
+  --a1: #5b8cff;
+  --a2: #8b5cf6;
+  --a3: #22d3ee;
+  --grad: linear-gradient(120deg, var(--a1), var(--a2) 55%, var(--a3));
+  --ease: cubic-bezier(.22, 1, .36, 1);
+  --spring: cubic-bezier(.34, 1.56, .64, 1);
+}
+
+body[data-theme="dark"] {
+  --bg: #070a14;
+  --card: rgba(22, 29, 50, .66);
+  --ink: #f2f5ff;
+  --soft: #a3aecb;
+  --rule: rgba(170, 190, 255, .14);
+}
+
+/* ---------- 2. Smooth scrolling + scrollbar ---------- */
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 110px;
+}
+* { scrollbar-width: thin; scrollbar-color: rgba(120, 140, 220, .5) transparent; }
+::-webkit-scrollbar { width: 9px; height: 9px; }
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(var(--a1), var(--a2));
+  border-radius: 99px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+aside, .ov .box, .tw, details.raw pre { overscroll-behavior: contain; scroll-behavior: smooth; }
+
+/* Scroll progress bar (top pe patli line) — Chrome/Edge me chalti hai */
+@supports (animation-timeline: scroll()) {
+  html::after {
+    content: "";
+    position: fixed;
+    top: 0; left: 0;
+    height: 3px;
+    width: 100%;
+    z-index: 100;
+    background: var(--grad);
+    transform-origin: left;
+    transform: scaleX(0);
+    animation: rbProgress linear both;
+    animation-timeline: scroll(root);
+    pointer-events: none;
+  }
+}
+@keyframes rbProgress { to { transform: scaleX(1); } }
+
+/* ---------- 3. Keyframes ---------- */
+@keyframes rbUp      { from { opacity: 0; transform: translateY(26px) scale(.98); } to { opacity: 1; transform: none; } }
+@keyframes rbDown    { from { opacity: 0; transform: translateY(-18px); } to { opacity: 1; transform: none; } }
+@keyframes rbLeft    { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
+@keyframes rbPop     { from { opacity: 0; transform: scale(.6); } to { opacity: 1; transform: none; } }
+@keyframes rbFloat   { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+@keyframes rbDrift   { 0% { transform: translate(0,0) scale(1); } 50% { transform: translate(60px,-40px) scale(1.15); } 100% { transform: translate(0,0) scale(1); } }
+@keyframes rbDrift2  { 0% { transform: translate(0,0) scale(1.1); } 50% { transform: translate(-70px,50px) scale(.95); } 100% { transform: translate(0,0) scale(1.1); } }
+@keyframes rbGradMove{ 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+@keyframes rbPulse   { 0%,100% { box-shadow: 0 0 0 0 rgba(110,145,255,.45); } 50% { box-shadow: 0 0 0 9px rgba(110,145,255,0); } }
+@keyframes rbGlow    { 0%,100% { text-shadow: 0 0 18px rgba(180,206,255,.4); } 50% { text-shadow: 0 0 34px rgba(190,170,255,.85); } }
+@keyframes rbBar     { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes rbRipple  { to { transform: scale(2.6); opacity: 0; } }
+@keyframes rbSpin    { to { transform: rotate(360deg); } }
+@keyframes rbShake   { 0%,100% { transform: translateX(0); } 20%,60% { transform: translateX(-6px); } 40%,80% { transform: translateX(6px); } }
+@keyframes rbModal   { from { opacity: 0; transform: translateY(30px) scale(.92); } to { opacity: 1; transform: none; } }
+
+/* ---------- 4. Animated background (aurora) ---------- */
+body::before {
+  content: "";
+  position: fixed;
+  width: 55vmax; height: 55vmax;
+  left: -15vmax; top: -15vmax;
+  inset: auto;
+  z-index: -1;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(91,140,255,.32), transparent 65%);
+  filter: blur(40px);
+  animation: rbDrift 22s ease-in-out infinite;
+  pointer-events: none;
+}
+body::after {
+  content: "";
+  position: fixed;
+  width: 50vmax; height: 50vmax;
+  right: -12vmax; bottom: -14vmax;
+  z-index: -1;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(167,110,255,.28), rgba(34,211,238,.12) 55%, transparent 70%);
+  filter: blur(46px);
+  animation: rbDrift2 26s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* ---------- 5. Sidebar ---------- */
+aside {
+  animation: rbLeft .8s var(--ease) backwards;
+  border-radius: 28px;
+  background: var(--side);
+}
+aside > * { animation: rbLeft .7s var(--ease) backwards; }
+aside > *:nth-child(1)  { animation-delay: .10s; }
+aside > *:nth-child(2)  { animation-delay: .16s; }
+aside > *:nth-child(3)  { animation-delay: .22s; }
+aside > *:nth-child(4)  { animation-delay: .28s; }
+aside > *:nth-child(5)  { animation-delay: .34s; }
+aside > *:nth-child(6)  { animation-delay: .40s; }
+aside > *:nth-child(7)  { animation-delay: .46s; }
+aside > *:nth-child(8)  { animation-delay: .52s; }
+aside > *:nth-child(9)  { animation-delay: .58s; }
+aside > *:nth-child(10) { animation-delay: .64s; }
+aside > *:nth-child(11) { animation-delay: .70s; }
+aside > *:nth-child(12) { animation-delay: .76s; }
+aside > *:nth-child(n+13) { animation-delay: .82s; }
+
+.brand {
+  background: linear-gradient(100deg, #a8c8ff, #d3b8ff, #8be9ff, #a8c8ff);
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: rbLeft .7s var(--ease) .1s backwards, rbGradMove 6s linear infinite;
+}
+
+.nav {
+  position: relative;
+  overflow: hidden;
+  transition: transform .4s var(--ease), background .4s var(--ease),
+              color .3s ease, box-shadow .4s var(--ease), padding-left .4s var(--ease) !important;
+}
+.nav::before {                                   /* hover pe light sweep */
+  content: "";
+  position: absolute;
+  top: 0; left: -80%;
+  width: 55%; height: 100%;
+  background: linear-gradient(100deg, transparent, rgba(255,255,255,.22), transparent);
+  transform: skewX(-20deg);
+  transition: left .7s var(--ease);
+  pointer-events: none;
+}
+.nav:hover { transform: translateX(5px); padding-left: 17px; }
+.nav:hover::before { left: 130%; }
+.nav:active { transform: translateX(3px) scale(.97) !important; }
+.nav.on {
+  background: linear-gradient(110deg, rgba(111,151,255,.42), rgba(166,130,255,.26), rgba(60,200,230,.2));
+  background-size: 200% 100%;
+  animation: rbGradMove 6s ease-in-out infinite;
+  box-shadow: 0 6px 20px rgba(100,130,255,.25), inset 0 1px rgba(255,255,255,.15);
+}
+
+/* ---------- 6. Top bar + buttons ---------- */
+.top { animation: rbDown .7s var(--ease) .1s backwards; }
+.top h1 { transition: letter-spacing .5s var(--ease); }
+.top:hover h1 { letter-spacing: -.3px; }
+#title { animation: rbUp .5s var(--ease) backwards; }
+
+.btn, .go, .chip, .tabs button {
+  position: relative;
+  overflow: hidden;
+}
+.btn, .go {
+  transition: transform .4s var(--spring), box-shadow .4s var(--ease),
+              background-position .6s var(--ease), filter .3s ease !important;
+}
+.btn::after, .go::after {                         /* shine sweep */
+  content: "";
+  position: absolute;
+  top: 0; left: -90%;
+  width: 60%; height: 100%;
+  background: linear-gradient(100deg, transparent, rgba(255,255,255,.5), transparent);
+  transform: skewX(-22deg);
+  transition: left .8s var(--ease);
+  pointer-events: none;
+}
+.btn:hover::after, .go:hover::after { left: 140%; }
+.btn:hover, .go:hover { transform: translateY(-3px) scale(1.03); }
+.btn:active, .go:active { transform: scale(.94) !important; transition-duration: .12s !important; }
+
+.btn.pri, .go {
+  background: linear-gradient(120deg, var(--a1), var(--a2), var(--a3), var(--a1));
+  background-size: 300% 100%;
+  animation: rbGradMove 8s ease infinite;
+}
+.go:disabled { animation: rbGradMove 1.4s linear infinite; }
+
+.avatar { animation: rbPulse 2.6s ease-in-out infinite; transition: transform .4s var(--spring); }
+.btn:hover .avatar { transform: rotate(-8deg) scale(1.12); }
+
+/* ---------- 7. Clock board ---------- */
+.board {
+  background: linear-gradient(125deg, #1f3468, #4558b0, #7a5ec6, #3a79c8);
+  background-size: 300% 300%;
+  animation: rbUp .8s var(--ease) .15s backwards, rbGradMove 14s ease infinite;
+  transition: transform .5s var(--ease), box-shadow .5s var(--ease);
+}
+.board:hover { transform: translateY(-4px); box-shadow: 0 30px 70px rgba(66,79,170,.38); }
+.board::after { animation: rbFloat 7s ease-in-out infinite; }
+.board .clk { animation: rbGlow 4s ease-in-out infinite; }
+.board .hi { animation: rbUp .8s var(--ease) .4s backwards; }
+
+/* ---------- 8. Cards ---------- */
+.card {
+  position: relative;
+  overflow: hidden;
+  transition: transform .5s var(--ease), box-shadow .5s var(--ease),
+              border-color .4s ease, background .4s ease !important;
+}
+.card::before {                                   /* upar gradient line jo hover pe khulti hai */
+  content: "";
+  position: absolute;
+  top: 0; left: 0;
+  height: 3px; width: 100%;
+  background: var(--grad);
+  background-size: 200% 100%;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform .7s var(--ease);
+  animation: rbGradMove 4s linear infinite;
+  pointer-events: none;
+}
+.card:hover::before { transform: scaleX(1); }
+.card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 24px 55px rgba(70,90,190,.18), inset 0 1px rgba(255,255,255,.25);
+}
+
+/* page/panel + cards aate waqt stagger */
+.panel.on { animation: rbUp .55s var(--ease) backwards; }
+.panel.on .board,
+.panel.on .card { animation: rbUp .8s var(--ease) backwards; }
+.panel.on .grid > .card:nth-child(1), .panel.on > .card:nth-of-type(1) { animation-delay: .12s; }
+.panel.on .grid > .card:nth-child(2), .panel.on > .card:nth-of-type(2) { animation-delay: .24s; }
+.panel.on .grid > .card:nth-child(3), .panel.on > .card:nth-of-type(3) { animation-delay: .36s; }
+.panel.on > .card:nth-of-type(n+4) { animation-delay: .46s; }
+
+.fl, .card h2, .card p.d { animation: rbUp .7s var(--ease) backwards; }
+.card h2 { animation-delay: .2s; }
+.card p.d { animation-delay: .28s; }
+.fl:nth-child(1) { animation-delay: .34s; }
+.fl:nth-child(2) { animation-delay: .40s; }
+.fl:nth-child(3) { animation-delay: .46s; }
+.fl:nth-child(4) { animation-delay: .52s; }
+.fl:nth-child(5) { animation-delay: .58s; }
+.fl:nth-child(6) { animation-delay: .64s; }
+form.f > .go { animation: rbPop .6s var(--spring) .5s backwards, rbGradMove 8s ease infinite; }
+
+/* ---------- 9. Inputs ---------- */
+.fl label { transition: color .3s ease, transform .3s var(--ease); }
+.fl:focus-within label { color: var(--a1); transform: translateX(3px); }
+.fl input, .fl select {
+  transition: border-color .3s ease, box-shadow .4s var(--ease),
+              background .3s ease, transform .4s var(--ease) !important;
+}
+.fl input:hover, .fl select:hover { border-color: rgba(120,150,255,.5); }
+.fl input:focus, .fl select:focus {
+  transform: translateY(-2px);
+  box-shadow: 0 0 0 4px rgba(110,145,255,.16), 0 10px 24px rgba(90,120,220,.14);
+}
+.st { transition: color .3s ease; animation: rbUp .4s var(--ease) backwards; }
+.st.err { animation: rbShake .5s ease; }
+.opts { transition: color .3s ease; }
+.opts:hover { color: var(--ink); }
+input[type="checkbox"] { transition: transform .3s var(--spring); }
+input[type="checkbox"]:active { transform: scale(1.35); }
+
+/* ---------- 10. Results ---------- */
+[id^="out-"] > * { animation: rbUp .7s var(--ease) backwards; }
+[id^="out-"] > *:nth-child(2) { animation-delay: .1s; }
+[id^="out-"] > *:nth-child(3) { animation-delay: .2s; }
+[id^="out-"] > *:nth-child(4) { animation-delay: .3s; }
+
+.hero { transition: transform .45s var(--ease), box-shadow .45s var(--ease); }
+.hero:hover { transform: translateY(-3px); box-shadow: 0 14px 34px rgba(80,110,210,.15); }
+
+dl.kv > div {
+  animation: rbUp .6s var(--ease) backwards;
+  transition: transform .45s var(--ease), box-shadow .45s var(--ease), background .3s ease;
+}
+dl.kv > div:nth-child(1) { animation-delay: .10s; }
+dl.kv > div:nth-child(2) { animation-delay: .16s; }
+dl.kv > div:nth-child(3) { animation-delay: .22s; }
+dl.kv > div:nth-child(4) { animation-delay: .28s; }
+dl.kv > div:nth-child(5) { animation-delay: .34s; }
+dl.kv > div:nth-child(n+6) { animation-delay: .40s; }
+dl.kv > div:hover {
+  transform: translateY(-4px) scale(1.02);
+  background: rgba(125,150,255,.12);
+  box-shadow: 0 12px 28px rgba(80,110,210,.14);
+}
+
+tbody tr { animation: rbLeft .55s var(--ease) backwards; transition: background .3s ease, transform .35s var(--ease); }
+tbody tr:nth-child(1)  { animation-delay: .05s; }
+tbody tr:nth-child(2)  { animation-delay: .09s; }
+tbody tr:nth-child(3)  { animation-delay: .13s; }
+tbody tr:nth-child(4)  { animation-delay: .17s; }
+tbody tr:nth-child(5)  { animation-delay: .21s; }
+tbody tr:nth-child(6)  { animation-delay: .25s; }
+tbody tr:nth-child(7)  { animation-delay: .29s; }
+tbody tr:nth-child(8)  { animation-delay: .33s; }
+tbody tr:nth-child(n+9){ animation-delay: .37s; }
+tbody tr:hover { background: rgba(125,150,255,.13); transform: translateX(4px); }
+
+.tag { animation: rbPop .55s var(--spring) .15s backwards; transition: transform .35s var(--spring); }
+.tag:hover { transform: scale(1.1); }
+.tag.red { animation: rbPop .55s var(--spring) .15s backwards, rbPulseRed 2.4s ease-in-out .8s infinite; }
+@keyframes rbPulseRed { 0%,100% { box-shadow: 0 0 0 0 rgba(255,93,120,.4); } 50% { box-shadow: 0 0 0 7px rgba(255,93,120,0); } }
+
+.bar i {
+  transform-origin: left;
+  animation: rbBar 1.1s var(--ease) .2s backwards;
+  background-image: linear-gradient(90deg, rgba(255,255,255,.0), rgba(255,255,255,.35), rgba(255,255,255,0));
+  background-size: 200% 100%;
+}
+
+.skel { animation: shimmer 1.4s ease infinite, rbUp .4s var(--ease) backwards; }
+
+details.raw summary { transition: color .3s ease; }
+details.raw summary:hover { color: var(--a1); }
+details.raw[open] pre { animation: rbUp .45s var(--ease) backwards; }
+
+/* ---------- 11. Recent chips ---------- */
+.chip {
+  animation: rbPop .55s var(--spring) backwards;
+  transition: transform .4s var(--spring), border-color .3s ease, background .3s ease, box-shadow .4s var(--ease) !important;
+}
+.chip:nth-child(1) { animation-delay: .10s; }
+.chip:nth-child(2) { animation-delay: .16s; }
+.chip:nth-child(3) { animation-delay: .22s; }
+.chip:nth-child(4) { animation-delay: .28s; }
+.chip:nth-child(5) { animation-delay: .34s; }
+.chip:nth-child(n+6) { animation-delay: .40s; }
+.chip:hover { transform: translateY(-4px) scale(1.06); box-shadow: 0 10px 22px rgba(90,120,220,.2); }
+.chip:active { transform: scale(.95) !important; }
+
+/* ---------- 12. Modals ---------- */
+.ov { transition: opacity .35s ease; }
+.ov.open { animation: fadeIn .35s ease both; }
+.ov .box { animation: rbModal .55s var(--spring) both; }
+.ov.open .fl { animation: rbUp .6s var(--ease) backwards; }
+.ov.open .fl:nth-of-type(1) { animation-delay: .15s; }
+.ov.open .fl:nth-of-type(2) { animation-delay: .22s; }
+.ov.open .fl:nth-of-type(3) { animation-delay: .29s; }
+.ov.open .fl:nth-of-type(4) { animation-delay: .36s; }
+.tabs button { transition: background .35s var(--ease), box-shadow .35s var(--ease), transform .3s var(--spring); }
+.tabs button:hover { transform: translateY(-1px); }
+.tabs button:active { transform: scale(.95); }
+.x { transition: transform .5s var(--spring), background .3s ease !important; }
+.x:hover { transform: rotate(180deg) scale(1.1); background: rgba(255,93,120,.15); }
+.msg { transition: color .3s ease; }
+.msg.err { animation: rbShake .5s ease; }
+
+/* ---------- 13. Footer + theme change ---------- */
+footer { animation: rbUp .8s var(--ease) .6s backwards; }
+body, .card, .top, aside, .board, .ov .box, .fl input, .fl select, dl.kv > div, .hero, .tw, th, td {
+  transition-property: background, background-color, color, border-color, box-shadow, transform, opacity;
+  transition-duration: .45s;
+  transition-timing-function: var(--ease);
+}
+
+/* ---------- 14. Ripple (JS ke saath chalta hai, neeche reply me diya hai) ---------- */
+.rb-ripple {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .5);
+  transform: scale(0);
+  animation: rbRipple .7s ease-out forwards;
+  pointer-events: none;
+}
+
+/* ---------- 15. Mobile ---------- */
+@media (max-width: 700px) {
+  .card:hover, .board:hover { transform: none; }
+  aside { border-radius: 21px; }
+  aside > * { animation-name: rbDown; }
+  body::before, body::after { filter: blur(30px); }
+}
+
+/* ---------- 16. Jinko kam animation chahiye ---------- */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto !important; }
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-delay: 0s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
+
+
+/* Made by Chandan badge */
+@keyframes rbBadgeIn {
+  from { opacity: 0; transform: translateY(20px) scale(.85); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes rbNameFlow {
+  to { background-position: 200% 0; }
+}
+
+.made-by {
+  position: fixed;
+  right: 18px;
+  bottom: 16px;
+  z-index: 40;
+  padding: 7px 14px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  color: var(--soft);
+  background: var(--card);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  box-shadow: 0 8px 24px rgba(60, 80, 160, .14);
+  font-size: 12px;
+  letter-spacing: .3px;
+  animation: rbBadgeIn .8s cubic-bezier(.22, 1, .36, 1) 1s backwards;
+  transition: transform .4s cubic-bezier(.34, 1.56, .64, 1), box-shadow .4s ease;
+}
+
+.made-by b {
+  background: linear-gradient(100deg, #5b8cff, #8b5cf6, #22d3ee, #5b8cff);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: rbNameFlow 4s linear infinite;
+}
+
+.made-by:hover {
+  transform: translateY(-4px) scale(1.06);
+  box-shadow: 0 14px 32px rgba(90, 110, 220, .28);
+}
+
+@media (max-width: 700px) {
+  .made-by { right: 10px; bottom: 10px; padding: 5px 11px; font-size: 11px; }
+}
+
+</style>  
 </head>
 <body>
 <div class="app">
@@ -1194,6 +1687,7 @@ footer {
 </div>
 </div>
 
+
 <div class="ov" id="authOv" role="dialog" aria-modal="true"><div class="box">
   <button class="x" id="authX" aria-label="Close">&times;</button>
   <h2 id="aT">Welcome aboard</h2><p class="sub" id="aS">Sign in to your railway dashboard.</p>
@@ -1216,6 +1710,8 @@ footer {
     <button class="go" style="width:100%">Save profile</button>
   </form>
   <button class="btn" id="logout" style="width:100%;margin-top:10px">Log out</button></div></div>
+
+  <div class="made-by">Made by <b>Chandan</b></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -1430,6 +1926,38 @@ if (sideGlow) {
     sideGlow.style.setProperty("--my", "-300px");
   });
 }
+
+
+/* ===== SMOOTH SCROLL NAVIGATION ===== */
+
+document.querySelectorAll('a[href^="#"]').forEach((link) => {
+  link.addEventListener("click", function (e) {
+    const target = document.querySelector(
+      this.getAttribute("href")
+    );
+
+    if (target) {
+      e.preventDefault();
+
+      target.scrollIntoView({
+        behavior: "smooth",
+        block: "start"
+      });
+    }
+  });
+});
+
+
+document.addEventListener('click', e => {
+  const b = e.target.closest('.btn,.go,.nav,.chip');
+  if (!b) return;
+  const r = b.getBoundingClientRect(), s = Math.max(r.width, r.height);
+  const d = document.createElement('span');
+  d.className = 'rb-ripple';
+  d.style.cssText = `width:${s}px;height:${s}px;left:${e.clientX - r.left - s/2}px;top:${e.clientY - r.top - s/2}px`;
+  b.appendChild(d);
+  setTimeout(() => d.remove(), 700);
+});
 
 </script>
 </body>
