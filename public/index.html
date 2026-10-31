@@ -1702,6 +1702,21 @@ body[data-theme="dark"] .live-stop.upcoming .live-stop-marker{background:#24334a
  .live-delay-footer{padding:12px}.live-delay-footer strong{font-size:11px}
 }
 
+
+/* ===== SMART JOURNEY ASSISTANT ===== */
+.journey-tools{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:14px;margin-top:16px}
+.journey-card{padding:17px;border:1px solid var(--rule);border-radius:19px;background:rgba(110,145,220,.07)}
+.journey-card h4{margin:0 0 5px;font-size:15px}.journey-card p{margin:0 0 12px;color:var(--soft);font-size:12px}
+.journey-form{display:flex;flex-wrap:wrap;align-items:end;gap:9px}.journey-form .fl{flex:1 1 115px}
+.journey-form input,.journey-form select{width:100%;min-width:0;padding:10px 12px;border:1px solid var(--rule);border-radius:12px;background:var(--card);color:var(--ink)}
+.journey-status{margin-top:10px;color:var(--soft);font-size:12px;line-height:1.5}.journey-status.active{color:#16865e;font-weight:700}
+.journey-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.journey-actions .btn{font-size:12px;padding:8px 12px}
+.live-insights{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:9px;margin-top:13px}
+.live-insight{padding:12px;border:1px solid var(--rule);border-radius:15px;background:rgba(120,150,220,.07)}
+.live-insight small{display:block;color:var(--soft);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+.live-insight strong{display:block;margin-top:4px;font-size:14px;overflow-wrap:anywhere}
+@media(max-width:520px){.journey-card{padding:14px}.journey-form .go{width:100%}}
+
 </style>  
 </head>
 <body>
@@ -1885,8 +1900,126 @@ function liveTimelineView(live, routeData, trainNo) {
     <div class="live-timebar"><span>Arrival</span><span>Journey route</span><span>Departure</span></div>
     <div class="live-timeline">${rows || '<div class="live-empty-note">Route stops are not available in this response.</div>'}</div>
     <div class="live-delay-footer"><div><strong>${safe(delayText)}</strong><small>${updated}</small></div><div class="live-refresh-dot">↻</div></div>
+    <div class="card" style="margin:14px;border-radius:20px">
+      <h2>Advanced live insights</h2><p class="d">Quick view of the train's latest running information.</p>
+      <div class="live-insights">
+        <div class="live-insight"><small>Current station</small><strong>${safe(current.stationName || current.name || currentCode || 'Updating…')}</strong></div>
+        <div class="live-insight"><small>Next station</small><strong>${safe(next.stationName || next.name || nextCode || 'Not available')}</strong></div>
+        <div class="live-insight"><small>Delay</small><strong>${Number.isFinite(delay) ? (delay > 0 ? delay+' min late' : 'On time') : 'Not available'}</strong></div>
+        <div class="live-insight"><small>Next platform</small><strong>${safe(next.platform || next.platformNumber || 'Not available')}</strong></div>
+      </div>
+      <div class="journey-tools">
+        <div class="journey-card">
+          <h4>🔔 Station alarm</h4><p>Choose your destination. We will alert when it becomes the next stop or the train reaches it.</p>
+          <form class="journey-form" id="stationAlarmForm">
+            <div class="fl"><label for="alarmStation">Destination station code</label><input id="alarmStation" maxlength="8" placeholder="BSB" value="" required autocomplete="off"></div>
+            <button class="go" type="submit">Set alarm</button>
+          </form>
+          <div class="journey-status" id="stationAlarmStatus">Alarm is not set for this train.</div>
+          <div class="journey-actions"><button class="btn" type="button" id="enableNotifications">Enable notifications</button><button class="btn" type="button" id="cancelStationAlarm">Cancel alarm</button></div>
+        </div>
+        <div class="journey-card">
+          <h4>⚡ Smart notifications</h4><p>Get alerts for next-station changes, delay changes and destination arrival while this page is open.</p>
+          <div class="journey-status" id="smartAlertStatus">Smart monitoring starts when live tracking is active.</div>
+          <div class="journey-actions"><button class="btn" type="button" id="checkLiveNow">Refresh live status</button><button class="btn" type="button" id="toggleSmartAlerts">Pause smart alerts</button></div>
+        </div>
+      </div>
+    </div>
   </div>`;
 }
+
+// ===== Station alarm + smart live notifications =====
+let activeLiveTrain = '';
+let liveMonitorTimer = null;
+let smartAlertsEnabled = true;
+let lastSmartSnapshot = null;
+let liveRouteCache = null;
+function alarmStorageKey(){return 'rb-station-alarm-'+activeLiveTrain}
+function readStationAlarm(){try{return JSON.parse(localStorage.getItem(alarmStorageKey())||'null')}catch(e){return null}}
+function saveStationAlarm(value){try{localStorage.setItem(alarmStorageKey(),JSON.stringify(value))}catch(e){}}
+function playRailAlert(){
+  try{const Ctx=window.AudioContext||window.webkitAudioContext;if(!Ctx)return;const ctx=new Ctx();
+    [0,0.22,0.44].forEach((wait,i)=>{const osc=ctx.createOscillator(),gain=ctx.createGain();osc.type='sine';osc.frequency.value=i===1?880:660;gain.gain.setValueAtTime(.0001,ctx.currentTime+wait);gain.gain.exponentialRampToValueAtTime(.22,ctx.currentTime+wait+.025);gain.gain.exponentialRampToValueAtTime(.0001,ctx.currentTime+wait+.19);osc.connect(gain);gain.connect(ctx.destination);osc.start(ctx.currentTime+wait);osc.stop(ctx.currentTime+wait+.2)});
+  }catch(e){console.warn('Alarm sound unavailable',e)}
+}
+function sendRailNotification(title,body){
+  playRailAlert();
+  if('Notification' in window && Notification.permission==='granted'){
+    try{new Notification(title,{body,tag:'rail-board-'+activeLiveTrain,renotify:true})}catch(e){}
+  }
+}
+function updateAlarmStatus(message,active=false){const el=$('stationAlarmStatus');if(el){el.textContent=message;el.classList.toggle('active',active)}}
+function restoreAlarmUI(){const a=readStationAlarm();if(!a){updateAlarmStatus('Alarm is not set for this train.');return}
+  const input=$('alarmStation');if(input)input.value=a.station;
+  updateAlarmStatus(`Alarm active for ${a.station}. Alert when it becomes the next stop or train reaches it.`,true);
+}
+async function requestRailNotifications(){
+  if(!('Notification' in window)){updateAlarmStatus('This browser does not support desktop notifications. Alarm sound will still work while the page is open.');return}
+  try{const permission=await Notification.requestPermission();
+    if(permission==='granted')updateAlarmStatus('Browser notifications enabled. Set your destination alarm now.',true);
+    else updateAlarmStatus('Notifications are blocked. Allow them in your browser site settings; sound alerts can still work.');
+  }catch(e){updateAlarmStatus('Could not enable browser notifications.');}
+}
+function checkSmartChanges(data){
+  const current=data.currentLocation||{},next=data.nextHalt||{};
+  const nextCode=String(next.stationCode||next.code||'').toUpperCase();
+  const currentCode=String(current.stationCode||current.code||'').toUpperCase();
+  const delay=Number(data.delayMinutes);
+  const snap={nextCode,currentCode,delay:Number.isFinite(delay)?delay:null};
+  if(lastSmartSnapshot){
+    if(snap.nextCode && lastSmartSnapshot.nextCode && snap.nextCode!==lastSmartSnapshot.nextCode){
+      sendRailNotification('Next station updated',`Train ${activeLiveTrain}: next stop is now ${next.stationName||nextCode}.`);
+    }
+    if(snap.delay!==null && lastSmartSnapshot.delay!==null && Math.abs(snap.delay-lastSmartSnapshot.delay)>=5){
+      sendRailNotification('Train delay changed',`Train ${activeLiveTrain} is now ${snap.delay>0?snap.delay+' minutes late':'running on time'}.`);
+    }
+  }
+  lastSmartSnapshot=snap;
+  const alarm=readStationAlarm();
+  if(alarm){
+    const target=String(alarm.station||'').toUpperCase();
+    if(target && currentCode===target){
+      sendRailNotification('Destination reached 🎉',`Train ${activeLiveTrain} has reached ${target}. Please get ready to deboard.`);
+      saveStationAlarm(null);updateAlarmStatus(`Destination ${target} reached. Alarm completed.`,true);
+    }else if(target && nextCode===target && !alarm.approachingSent){
+      alarm.approachingSent=true;saveStationAlarm(alarm);
+      sendRailNotification('Your station is next 🚉',`Train ${activeLiveTrain} is approaching ${next.stationName||target}. Please get ready to deboard.`);
+      updateAlarmStatus(`${target} is the next stop. Arrival alert sent.`,true);
+    }
+  }
+  const status=$('smartAlertStatus');if(status)status.textContent=`Monitoring active · Next: ${next.stationName||nextCode||'not available'} · Delay: ${Number.isFinite(delay)?delay+' min':'not available'} · checked ${new Date().toLocaleTimeString('en-IN')}`;
+}
+async function pollLiveMonitor(){
+  if(!activeLiveTrain || document.hidden)return;
+  try{const r=await api(`/trains/${activeLiveTrain}/live?date=${today}`);checkSmartChanges(r.data||{});}
+  catch(e){const el=$('smartAlertStatus');if(el)el.textContent='Live monitor could not refresh: '+e.message;}
+}
+function startLiveMonitor(trainNo){
+  activeLiveTrain=String(trainNo||'').trim();lastSmartSnapshot=null;
+  clearInterval(liveMonitorTimer);
+  restoreAlarmUI();
+  const status=$('smartAlertStatus');if(status)status.textContent='Smart monitoring active. Checking every 30 seconds while this page is open.';
+  pollLiveMonitor();liveMonitorTimer=setInterval(pollLiveMonitor,30000);
+}
+document.addEventListener('submit',e=>{
+  if(e.target.id!=='stationAlarmForm')return;e.preventDefault();
+  const station=$('alarmStation').value.trim().toUpperCase();
+  if(!/^[A-Z0-9]{2,8}$/.test(station)){updateAlarmStatus('Enter a valid station code, for example BSB.');return}
+  saveStationAlarm({station,approachingSent:false,createdAt:Date.now()});
+  updateAlarmStatus(`Alarm set for ${station}. We will alert when it becomes the next stop and when reached.`,true);
+  if('Notification' in window && Notification.permission==='default')requestRailNotifications();
+});
+document.addEventListener('click',e=>{
+  if(e.target.closest('#enableNotifications'))requestRailNotifications();
+  if(e.target.closest('#cancelStationAlarm')){if(activeLiveTrain)saveStationAlarm(null);updateAlarmStatus('Station alarm cancelled.');}
+  if(e.target.closest('#checkLiveNow'))pollLiveMonitor();
+  if(e.target.closest('#toggleSmartAlerts')){
+    smartAlertsEnabled=!smartAlertsEnabled;
+    if(!smartAlertsEnabled){clearInterval(liveMonitorTimer);const b=$('toggleSmartAlerts');if(b)b.textContent='Resume smart alerts';const st=$('smartAlertStatus');if(st)st.textContent='Smart alerts paused.';}
+    else{const b=$('toggleSmartAlerts');if(b)b.textContent='Pause smart alerts';startLiveMonitor(activeLiveTrain);}
+  }
+});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&activeLiveTrain&&smartAlertsEnabled)pollLiveMonitor()});
 
 async function api(path){
   const res=await fetch('/api/v1'+path,{headers:{Accept:'application/json'}});
@@ -1920,6 +2053,7 @@ async function run(t,v=vals(t)){
       let routeResponse=null;
       try{routeResponse=await api(`/trains/${v.no}?haltsOnly=true`)}catch(routeError){}
       out.innerHTML=liveTimelineView(r.data,routeResponse?.data,v.no)+`<details class="raw"><summary>Show raw data</summary><pre>${esc(JSON.stringify(r,null,2))}</pre></details>`;
+      startLiveMonitor(v.no);
     }else{
       out.innerHTML=t.view(r.data,v)+`<details class="raw"><summary>Show raw data</summary><pre>${esc(JSON.stringify(r,null,2))}</pre></details>`;
     }
@@ -1933,6 +2067,7 @@ function open_(id,v){
   document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('on',p.id==='p-'+id));
   const t=TOOLS.find(x=>x.id===id);$('title').textContent=t?t.n:'Overview';
   clearInterval(timer);
+  if(id!=='live'){clearInterval(liveMonitorTimer);activeLiveTrain='';}
   if(t&&v){Object.entries(v).forEach(([k,x])=>{const el=$(`${id}-${k}`);if(el)el.value=x});run(t,v)}
 }
 side.addEventListener('click',e=>{const b=e.target.closest('.nav');if(b)open_(b.dataset.t)});
