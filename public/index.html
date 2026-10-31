@@ -1655,6 +1655,53 @@ body, .card, .top, aside, .board, .ov .box, .fl input, .fl select, dl.kv > div, 
   .made-by { right: 10px; bottom: 10px; padding: 5px 11px; font-size: 11px; }
 }
 
+
+/* ===== LIVE TRAIN STATUS — RAILWAY TIMELINE ===== */
+.live-status-shell{margin-top:18px;overflow:hidden;border:1px solid var(--rule);border-radius:24px;background:var(--card);box-shadow:0 14px 38px rgba(35,55,110,.08)}
+.live-status-head{display:flex;align-items:center;gap:14px;padding:18px 20px;color:#fff;background:linear-gradient(115deg,#1766a8,#2388c8)}
+.live-status-head .live-train-icon{display:grid;place-items:center;flex:0 0 44px;width:44px;height:44px;border-radius:15px;background:rgba(255,255,255,.18);font-size:23px}
+.live-status-head h3{margin:0;font-size:16px;line-height:1.3}
+.live-status-head p{margin:4px 0 0;color:rgba(255,255,255,.78);font-size:12px}
+.live-status-head .tag{margin-left:auto;color:#fff;background:rgba(255,255,255,.17);border-color:rgba(255,255,255,.2)}
+.live-timebar{display:grid;grid-template-columns:72px minmax(0,1fr) 82px;gap:12px;padding:10px 16px;color:#fff;background:#252a32;font-size:12px;font-weight:700}
+.live-timebar span:last-child{text-align:right}
+.live-timeline{position:relative;padding:8px 15px 18px;background:rgba(125,145,190,.045)}
+.live-timeline:before{content:"";position:absolute;top:18px;bottom:25px;left:91px;width:8px;border-radius:20px;background:linear-gradient(180deg,#8fd1f4,#4c9fd0 65%,#c5d9e9)}
+.live-stop{position:relative;display:grid;grid-template-columns:64px 34px minmax(0,1fr) 76px;gap:9px;align-items:start;min-height:112px;padding:12px 0}
+.live-stop:first-child{min-height:145px}
+.live-stop:last-child{min-height:75px}
+.live-stop-time{padding-top:4px;text-align:right;font-size:12px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.live-stop-time small{display:block;margin-top:4px;color:var(--soft);font-size:11px;font-weight:500}
+.live-stop-time.depart{text-align:left}
+.live-stop-marker{z-index:1;display:grid;place-items:center;width:27px;height:27px;margin:0 auto;border:5px solid #eaf4fb;border-radius:50%;background:#277eb7;box-shadow:0 0 0 2px #78bde4}
+.live-stop.passed .live-stop-marker{background:#55a5cc;box-shadow:0 0 0 2px #a6d7ef}
+.live-stop.current .live-stop-marker{width:38px;height:38px;margin-top:-5px;border:4px solid #fff;background:#0878bd;box-shadow:0 0 0 3px #68b9e5,0 5px 16px rgba(20,110,180,.25);font-size:18px}
+.live-stop-info{min-width:0;padding:1px 0 0}
+.live-stop-info strong{display:block;color:var(--ink);font-size:14px;line-height:1.35}
+.live-stop-info .live-meta{display:flex;flex-wrap:wrap;gap:5px 9px;margin-top:5px;color:var(--soft);font-size:11px}
+.live-stop-info .live-meta span{white-space:nowrap}
+.live-stop.current .live-stop-info strong{font-size:15px}
+.live-stop.current .live-meta .live-current-label{color:#1683c0;font-weight:800}
+.live-stop.upcoming .live-stop-marker{background:#fff;border-color:#e8eef5;box-shadow:0 0 0 2px #a9bdcd}
+.live-stop.upcoming .live-stop-info{opacity:.9}
+.live-delay-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 17px;background:rgba(94,155,235,.13);border-top:1px solid var(--rule)}
+.live-delay-footer strong{display:block;color:#c45b5b;font-size:13px}
+.live-delay-footer small{display:block;margin-top:3px;color:var(--soft);font-size:11px}
+.live-refresh-dot{display:grid;place-items:center;flex:0 0 40px;width:40px;height:40px;border-radius:50%;color:white;background:#176da9;font-size:18px}
+.live-empty-note{padding:16px;color:var(--soft);font-size:13px}
+body[data-theme="dark"] .live-timeline{background:rgba(5,10,25,.16)}
+body[data-theme="dark"] .live-stop-marker{border-color:#18263b}
+body[data-theme="dark"] .live-stop.upcoming .live-stop-marker{background:#24334a;border-color:#1a2940}
+@media(max-width:520px){
+ .live-status-head{padding:15px}.live-timebar{grid-template-columns:57px minmax(0,1fr) 65px;padding:9px 11px;font-size:11px}
+ .live-timeline{padding:7px 9px 13px}.live-timeline:before{left:72px;width:7px}
+ .live-stop{grid-template-columns:51px 27px minmax(0,1fr) 58px;gap:7px;min-height:104px;padding:11px 0}
+ .live-stop:first-child{min-height:128px}.live-stop-time{font-size:10px}.live-stop-time small{font-size:9px}
+ .live-stop-marker{width:21px;height:21px;border-width:4px}.live-stop.current .live-stop-marker{width:32px;height:32px}
+ .live-stop-info strong{font-size:12px}.live-stop.current .live-stop-info strong{font-size:13px}.live-stop-info .live-meta{font-size:10px}
+ .live-delay-footer{padding:12px}.live-delay-footer strong{font-size:11px}
+}
+
 </style>  
 </head>
 <body>
@@ -1713,6 +1760,8 @@ body, .card, .top, aside, .board, .ov .box, .fl input, .fl select, dl.kv > div, 
 
   <div class="made-by">Made by <b>Chandan</b></div>
 
+  
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const $=id=>document.getElementById(id);
@@ -1769,6 +1818,76 @@ const TOOLS=[
  view:(d,v)=>v.kind==='stations'?table(['Code','Station','City'],(d||[]).map(i=>[esc(i.code),esc(i.name),esc(i.city||'—')])):table(['Number','Train','Route'],(d||[]).map(i=>[esc(i.number),esc(i.name),esc(join([i.source,i.destination],' → '))]))}
 ];
 
+
+function liveTimelineView(live, routeData, trainNo) {
+  const current = live.currentLocation || {};
+  const next = live.nextHalt || {};
+  const route = Array.isArray(routeData?.route) ? routeData.route : [];
+  const train = routeData?.train || {};
+  const currentCode = String(current.stationCode || current.code || '').toUpperCase();
+  const nextCode = String(next.stationCode || next.code || '').toUpperCase();
+  const stationCode = s => String(s?.station?.code || s?.stationCode || s?.code || '').toUpperCase();
+  const stationName = s => s?.station?.name || s?.stationName || s?.name || s?.station?.code || s?.stationCode || 'Station';
+  let currentIndex = route.findIndex(s => stationCode(s) && stationCode(s) === currentCode);
+  let nextIndex = route.findIndex(s => stationCode(s) && stationCode(s) === nextCode);
+  if (nextIndex < 0 && currentIndex >= 0) nextIndex = currentIndex + 1;
+  if (currentIndex < 0 && nextIndex > 0) currentIndex = nextIndex - 1;
+
+  let stops = route.map((s, i) => ({
+    name: stationName(s), code: stationCode(s),
+    arrival: s.arrival || s.arrivalTime || '',
+    departure: s.departure || s.departureTime || '',
+    distance: s.distanceFromSource ?? s.distance ?? s.distanceKm ?? '',
+    platform: s.platform || s.platformNumber || '',
+    state: i < currentIndex ? 'passed' : i === currentIndex ? 'current' : 'upcoming'
+  }));
+
+  if (!stops.length) {
+    stops = [
+      {name: current.stationName || current.name || 'Current location', code: currentCode, arrival:'', departure:'', distance:current.distance||'', platform:current.platform||'', state:'current'},
+      {name: next.stationName || next.name || 'Next halt', code:nextCode, arrival:next.arrival||'', departure:next.departure||'', distance:next.distance||'', platform:next.platform||'', state:'upcoming'}
+    ];
+  } else {
+    if (currentIndex < 0 && currentCode) {
+      stops.unshift({name:current.stationName || current.name || 'Current location',code:currentCode,arrival:'',departure:'',distance:current.distance||'',platform:current.platform||'',state:'current'});
+    }
+    if (nextCode && !stops.some(s => s.code === nextCode)) {
+      stops.push({name:next.stationName || next.name || 'Next halt',code:nextCode,arrival:next.arrival||'',departure:'',distance:next.distance||'',platform:next.platform||'',state:'upcoming'});
+    }
+  }
+
+  const safe = x => esc(x === 0 ? '0' : (x ?? ''));
+  const delay = Number(live.delayMinutes);
+  const trainName = join([live.trainNumber || train.number || trainNo, live.trainName || train.name]);
+  const rows = stops.map((s,i) => {
+    const state = s.state || 'upcoming';
+    const arrival = s.arrival || (state === 'current' ? (current.arrival || '') : '');
+    const departure = s.departure || (state === 'current' ? (current.departure || '') : '');
+    const time = x => x ? safe(x) : '—';
+    const meta = [
+      s.code ? `<span>${safe(s.code)}</span>` : '',
+      s.distance !== '' && s.distance != null ? `<span>${safe(s.distance)} km</span>` : '',
+      s.platform ? `<span>Platform ${safe(s.platform)}</span>` : '',
+      state === 'current' ? `<span class="live-current-label">● Current position</span>` : ''
+    ].filter(Boolean).join('');
+    return `<div class="live-stop ${state}">
+      <div class="live-stop-time">${time(arrival)}<small>${arrival ? 'Arrival' : (i===0?'Start':'')}</small></div>
+      <div class="live-stop-marker">${state==='current'?'🚆':''}</div>
+      <div class="live-stop-info"><strong>${safe(s.name)}</strong><div class="live-meta">${meta}</div></div>
+      <div class="live-stop-time depart">${time(departure)}<small>${departure ? 'Departure' : (i===stops.length-1?'End':'')}</small></div>
+    </div>`;
+  }).join('');
+
+  const delayText = Number.isFinite(delay) && delay > 0 ? `Running ${delay} minutes late` : delay === 0 ? 'Running on time' : (live.status || 'Live running status');
+  const updated = live.lastUpdatedAt ? `Updated ${safe(live.lastUpdatedAt)}` : 'Live status from RailRadar';
+  return `<div class="live-status-shell">
+    <div class="live-status-head"><div class="live-train-icon">🚆</div><div><h3>${safe(trainName || 'Train '+trainNo)}</h3><p>${safe(join([train.source?.name,train.destination?.name],' → ') || 'Live train running status')}</p></div>${delay>0?tag(delay+' min late','red'):delay===0?tag('On time','green'):tag('Live','amber')}</div>
+    <div class="live-timebar"><span>Arrival</span><span>Journey route</span><span>Departure</span></div>
+    <div class="live-timeline">${rows || '<div class="live-empty-note">Route stops are not available in this response.</div>'}</div>
+    <div class="live-delay-footer"><div><strong>${safe(delayText)}</strong><small>${updated}</small></div><div class="live-refresh-dot">↻</div></div>
+  </div>`;
+}
+
 async function api(path){
   const res=await fetch('/api/v1'+path,{headers:{Accept:'application/json'}});
   const text=await res.text();let b;try{b=JSON.parse(text)}catch(e){b=null}
@@ -1797,7 +1916,13 @@ async function run(t,v=vals(t)){
   st.className='st';st.textContent='Loading…';if(!out.children.length)out.innerHTML='<div class="skel"></div>';btn.disabled=true;
   try{
     const r=await api(t.url(v));
-    out.innerHTML=t.view(r.data,v)+`<details class="raw"><summary>Show raw data</summary><pre>${esc(JSON.stringify(r,null,2))}</pre></details>`;
+    if(t.id==='live'){
+      let routeResponse=null;
+      try{routeResponse=await api(`/trains/${v.no}?haltsOnly=true`)}catch(routeError){}
+      out.innerHTML=liveTimelineView(r.data,routeResponse?.data,v.no)+`<details class="raw"><summary>Show raw data</summary><pre>${esc(JSON.stringify(r,null,2))}</pre></details>`;
+    }else{
+      out.innerHTML=t.view(r.data,v)+`<details class="raw"><summary>Show raw data</summary><pre>${esc(JSON.stringify(r,null,2))}</pre></details>`;
+    }
     st.textContent='Updated '+new Date().toLocaleTimeString('en-IN');
     remember(t,v);t.after&&t.after(v);
   }catch(e){out.innerHTML='';st.textContent=e.message+' Check your input and try again.';st.className='st err'}
